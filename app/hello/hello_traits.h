@@ -116,6 +116,11 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
 };
 
+template<> struct Traits<Task>: public Traits<Build>
+{
+    static const bool enabled = Traits<System>::multitask;
+};
+
 template<> struct Traits<Thread>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
@@ -123,7 +128,7 @@ template<> struct Traits<Thread>: public Traits<Build>
     static const bool simulate_capacity = false;
     static const unsigned int QUANTUM = 10000; // us
 
-    typedef RR Criterion;
+    typedef FCFS Criterion;
 };
 
 template<> struct Traits<Scheduler<Thread>>: public Traits<Build>

@@ -12,6 +12,7 @@ __END_UTIL
 __BEGIN_SYS
 
 volatile unsigned int Thread::_thread_count;
+volatile Task * Task::_active;
 Scheduler_Timer * Thread::_timer;
 Scheduler<Thread> Thread::_scheduler;
 
@@ -20,6 +21,7 @@ void Thread::constructor_prologue(unsigned int stack_size)
 {
     lock();
 
+    _task = Task::_active;
     _thread_count++;
     _scheduler.insert(this);
 
@@ -95,18 +97,18 @@ Thread::~Thread()
 }
 
 
-void Thread::priority(const Criterion & c)
+void Thread::priority(const Priority & c)
 {
     lock();
 
     db<Thread>(TRC) << "Thread::priority(this=" << this << ",prio=" << c << ")" << endl;
 
+    _link.rank(Criterion(c));
+
     if(_state != RUNNING) { // reorder the scheduling queue
         _scheduler.remove(this);
-        _link.rank(c);
         _scheduler.insert(this);
-    } else
-        _link.rank(c);
+    }
 
     if(preemptive)
         reschedule();
@@ -313,7 +315,6 @@ void Thread::reschedule()
     dispatch(prev, next);
 }
 
-
 void Thread::time_slicer(IC::Interrupt_Id i)
 {
     lock();
@@ -337,12 +338,13 @@ void Thread::dispatch(Thread * prev, Thread * next, bool charge)
         next->_state = RUNNING;
 
         db<Thread>(TRC) << "Thread::dispatch(prev=" << prev << ",next=" << next << ")" << endl;
-        if(Traits<Thread>::debugged && Traits<Debug>::info) {
-            CPU::Context tmp;
-            tmp.save();
-            db<Thread>(INF) << "Thread::dispatch:prev={" << prev << ",ctx=" << tmp << "}" << endl;
+        db<Thread>(INF) << "prev={" << prev << ",ctx=" << *prev->_context << "}" << endl;
+        db<Thread>(INF) << "next={" << next << ",ctx=" << *next->_context << "}" << endl;
+
+
+        if(prev->_task != next->_task){
+            Task::activate(next->_task);
         }
-        db<Thread>(INF) << "Thread::dispatch:next={" << next << ",ctx=" << *next->_context << "}" << endl;
 
         // The non-volatile pointer to volatile pointer to a non-volatile context is correct
         // and necessary because of context switches, but here, we are locked() and

@@ -178,6 +178,67 @@ private:
     Thread * _handler;
 };
 
+class Task
+{
+private:
+    typedef CPU::Log_Addr Log_Addr;
+
+public:
+    static volatile Task * _active;  // Works just like Thread::_running.
+
+    Task(Segment *cs, Segment *ds)
+    {
+        _as = new (SYSTEM) Address_Space();
+        db<Task>(TRC) << "Task->_as" << _as << endl;
+
+        _cs = cs;
+        db<Task>(TRC) << "Task->_cs" << _cs << endl;
+
+        _ds = ds;
+        db<Task>(TRC) << "Task->_ds" << _ds << endl;
+
+        _code = _as->attach(_cs, Memory_Map::APP_CODE);
+        db<Task>(TRC) << "Task->_code" << _code << endl;
+
+        _data = _as->attach(_ds, Memory_Map::APP_DATA);
+        db<Task>(TRC) << "Task->_data" << _data << endl;
+
+        db<Task>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",code=" << _code << ",data=" << _data << ") => " << this << endl;
+    }
+
+    Task(Address_Space *as, Segment *cs, Segment *ds)
+        : _as(as), _cs(cs), _ds(ds), _code(_as->attach(_cs, Memory_Map::APP_CODE)), _data(_as->attach(_ds, Memory_Map::APP_DATA))
+    {
+        db<Task>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",code=" << _code << ",data=" << _data << ") => " << this << endl;
+    }
+
+    ~Task();
+
+    static void activate(volatile Task *t)
+    {
+        Task::_active = t;
+        db<Task>(TRC) << "Current Task AS" << t->_as << endl;
+        t->_as->activate();
+    }
+
+    Address_Space *address_space() const { return _as; }
+
+    Segment *code_segment() const { return _cs; }
+    Segment *data_segment() const { return _ds; }
+
+    Log_Addr code() const { return _code; }
+    Log_Addr data() const { return _data; }
+
+private:
+    Address_Space *_as;
+
+    Segment *_cs;
+    Segment *_ds;
+
+    Log_Addr _code;
+    Log_Addr _data;
+};
+
 __END_SYS
 
 #endif

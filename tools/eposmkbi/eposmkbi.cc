@@ -250,6 +250,14 @@ int main(int argc, char **argv)
     // Add the size of the image to the Boot_Map in System_Info (excluding BOOT)
     si.bm.img_size = image_size - boot_size;
 
+
+    fprintf(out, "    Setup Offset \"%lu\":", si.bm.setup_offset);
+    fprintf(out, "    Init Offset \"%lu\":", si.bm.init_offset);
+    fprintf(out, "    System Offset \"%lu\":", si.bm.system_offset);
+    fprintf(out, "    Application Offset \"%lu\":", si.bm.application_offset);
+
+
+
     // Add System_Info
     unsigned int si_offset = boot_size;
     fprintf(out, "    Adding system info");
@@ -772,4 +780,3 @@ template<typename T> void invert(T & n)
         *h ^= *l;
     }
 }
-

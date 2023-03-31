@@ -95,6 +95,7 @@ __BEGIN_SYS
 // API Components
 template<> struct Traits<Application>: public Traits<Build>
 {
+    static const unsigned int APP_HEAP = Traits<Machine>::APP_HEAP;
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = Traits<Machine>::HEAP_SIZE;
     static const unsigned int MAX_THREADS = Traits<Machine>::MAX_THREADS;
@@ -116,6 +117,11 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
 };
 
+template<> struct Traits<Task>: public Traits<Build>
+{
+    static const bool enabled = Traits<System>::multitask;
+};
+
 template<> struct Traits<Thread>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
@@ -123,7 +129,7 @@ template<> struct Traits<Thread>: public Traits<Build>
     static const bool simulate_capacity = false;
     static const unsigned int QUANTUM = 10000; // us
 
-    typedef RR Criterion;
+    typedef FCFS Criterion;
 };
 
 template<> struct Traits<Scheduler<Thread>>: public Traits<Build>
