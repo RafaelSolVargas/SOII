@@ -8,7 +8,7 @@ __BEGIN_SYS
 
 // This class purpose is simply to define a well-known ending point for the initialization of the system.
 // It activates the first application thread (usually main()).
-// It must be linked first so init_end becomes the last constructor in the global's constructor list.
+// It must be linked first so init_esnd becomes the last constructor in the global's constructor list.
 
 class Init_End
 {

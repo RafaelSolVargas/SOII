@@ -16,7 +16,8 @@ private:
     static const unsigned int STACK_SIZE = Traits<Application>::STACK_SIZE;
 
 public:
-    Init_Application() {
+    Init_Application()
+    {
         db<Init>(TRC) << "Init_Application()" << endl;
 
         // Initialize Application's heap

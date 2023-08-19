@@ -11,9 +11,9 @@ __END_UTIL
 
 __BEGIN_SYS
 
-Scheduler_Timer * Thread::_timer;
+Scheduler_Timer *Thread::_timer;
 
-Thread* volatile Thread::_running;
+Thread *volatile Thread::_running;
 Thread::Queue Thread::_ready;
 Thread::Queue Thread::_suspended;
 
@@ -23,7 +23,6 @@ void Thread::constructor_prologue(unsigned int stack_size)
 
     _stack = reinterpret_cast<char *>(kmalloc(stack_size));
 }
-
 
 void Thread::constructor_epilogue(Log_Addr entry, unsigned int stack_size)
 {
@@ -35,15 +34,19 @@ void Thread::constructor_epilogue(Log_Addr entry, unsigned int stack_size)
                     << "},context={b=" << _context
                     << "," << *_context << "}) => " << this << endl;
 
-    switch(_state) {
-        case RUNNING: break;
-        case SUSPENDED: _suspended.insert(&_link); break;
-        default: _ready.insert(&_link);
+    switch (_state)
+    {
+    case RUNNING:
+        break;
+    case SUSPENDED:
+        _suspended.insert(&_link);
+        break;
+    default:
+        _ready.insert(&_link);
     }
 
     unlock();
 }
-
 
 Thread::~Thread()
 {
@@ -59,17 +62,16 @@ Thread::~Thread()
     _ready.remove(this);
     _suspended.remove(this);
 
-    if(_waiting)
+    if (_waiting)
         _waiting->remove(this);
 
-    if(_joining)
+    if (_joining)
         _joining->resume();
 
     unlock();
 
     kfree(_stack);
 }
-
 
 int Thread::join()
 {
@@ -83,15 +85,16 @@ int Thread::join()
     // Precondition: a single joiner
     assert(!_joining);
 
-    if(_state != FINISHING) {
+    if (_state != FINISHING)
+    {
         _joining = running();
         _joining->suspend();
-    } else
+    }
+    else
         unlock();
 
     return *reinterpret_cast<int *>(_stack);
 }
-
 
 void Thread::pass()
 {
@@ -99,7 +102,7 @@ void Thread::pass()
 
     db<Thread>(TRC) << "Thread::pass(this=" << this << ")" << endl;
 
-    Thread * prev = _running;
+    Thread *prev = _running;
     prev->_state = READY;
     _ready.insert(&prev->_link);
 
@@ -112,21 +115,21 @@ void Thread::pass()
     unlock();
 }
 
-
 void Thread::suspend()
 {
     lock();
 
     db<Thread>(TRC) << "Thread::suspend(this=" << this << ")" << endl;
 
-    if(_running != this)
+    if (_running != this)
         _ready.remove(this);
 
     _state = SUSPENDED;
     _suspended.insert(&_link);
 
-    if(_running == this) {
-        while(_ready.empty())
+    if (_running == this)
+    {
+        while (_ready.empty())
             idle();
 
         _running = _ready.remove()->object();
@@ -137,7 +140,6 @@ void Thread::suspend()
 
     unlock();
 }
-
 
 void Thread::resume()
 {
@@ -152,7 +154,6 @@ void Thread::resume()
     unlock();
 }
 
-
 // Class methods
 void Thread::yield()
 {
@@ -160,8 +161,9 @@ void Thread::yield()
 
     db<Thread>(TRC) << "Thread::yield(running=" << _running << ")" << endl;
 
-    if(!_ready.empty()) {
-        Thread * prev = _running;
+    if (!_ready.empty())
+    {
+        Thread *prev = _running;
         prev->_state = READY;
         _ready.insert(&prev->_link);
 
@@ -169,12 +171,12 @@ void Thread::yield()
         _running->_state = RUNNING;
 
         dispatch(prev, _running);
-    } else
+    }
+    else
         idle();
 
     unlock();
 }
-
 
 void Thread::exit(int status)
 {
@@ -182,32 +184,39 @@ void Thread::exit(int status)
 
     db<Thread>(TRC) << "Thread::exit(status=" << status << ") [running=" << running() << "]" << endl;
 
-    Thread * prev = _running;
+    Thread *prev = _running;
     prev->_state = FINISHING;
     *reinterpret_cast<int *>(prev->_stack) = status;
 
-    if(prev->_joining) {
-        Thread * joining = prev->_joining;
+    if (prev->_joining)
+    {
+        Thread *joining = prev->_joining;
         prev->_joining = 0;
         joining->resume(); // implicit unlock()
         lock();
     }
 
-    while(_ready.empty() && !_suspended.empty())
+    while (_ready.empty() && !_suspended.empty())
         idle(); // implicit unlock();
     lock();
 
-    if(!_ready.empty()) {
+    if (!_ready.empty())
+    {
         _running = _ready.remove()->object();
         _running->_state = RUNNING;
 
         dispatch(prev, _running);
-    } else { // _ready.empty() && _suspended.empty()
+    }
+    else
+    { // _ready.empty() && _suspended.empty()
         db<Thread>(WRN) << "The last thread has exited!" << endl;
-        if(reboot) {
+        if (reboot)
+        {
             db<Thread>(WRN) << "Rebooting the machine ..." << endl;
             Machine::reboot();
-        } else {
+        }
+        else
+        {
             db<Thread>(WRN) << "Halting the CPU ..." << endl;
             CPU::halt();
         }
@@ -216,13 +225,13 @@ void Thread::exit(int status)
     unlock();
 }
 
-void Thread::sleep(Queue * q)
+void Thread::sleep(Queue *q)
 {
     db<Thread>(TRC) << "Thread::sleep(running=" << running() << ",q=" << q << ")" << endl;
 
     assert(locked()); // locking handled by caller
 
-    Thread * prev = running();
+    Thread *prev = running();
     prev->_state = WAITING;
     prev->_waiting = q;
     q->insert(&prev->_link);
@@ -233,52 +242,50 @@ void Thread::sleep(Queue * q)
     dispatch(prev, _running);
 }
 
-
-void Thread::wakeup(Queue * q)
+void Thread::wakeup(Queue *q)
 {
     db<Thread>(TRC) << "Thread::wakeup(running=" << running() << ",q=" << q << ")" << endl;
 
     assert(locked()); // locking handled by caller
 
-    if(!q->empty()) {
-        Thread * t = q->remove()->object();
+    if (!q->empty())
+    {
+        Thread *t = q->remove()->object();
         t->_state = READY;
         t->_waiting = 0;
         _ready.insert(&t->_link);
     }
 }
 
-
-void Thread::wakeup_all(Queue * q)
+void Thread::wakeup_all(Queue *q)
 {
     db<Thread>(TRC) << "Thread::wakeup_all(running=" << running() << ",q=" << q << ")" << endl;
 
     assert(locked()); // locking handled by caller
 
-    while(!q->empty()) {
-        Thread * t = q->remove()->object();
+    while (!q->empty())
+    {
+        Thread *t = q->remove()->object();
         t->_state = READY;
         t->_waiting = 0;
         _ready.insert(&t->_link);
     }
 }
-
 
 void Thread::reschedule()
 {
     yield();
 }
 
-
 void Thread::time_slicer(IC::Interrupt_Id i)
 {
     reschedule();
 }
 
-
-void Thread::dispatch(Thread * prev, Thread * next)
+void Thread::dispatch(Thread *prev, Thread *next)
 {
-    if(prev != next) {
+    if (prev != next)
+    {
         assert(prev->_state != RUNNING);
         assert(next->_state == RUNNING);
 
@@ -294,7 +301,6 @@ void Thread::dispatch(Thread * prev, Thread * next)
         CPU::switch_context(const_cast<Context **>(&prev->_context), next->_context);
     }
 }
-
 
 int Thread::idle()
 {

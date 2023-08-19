@@ -12,12 +12,10 @@ Condition::Condition()
     db<Synchronizer>(TRC) << "Condition() => " << this << endl;
 }
 
-
 Condition::~Condition()
 {
     db<Synchronizer>(TRC) << "~Condition(this=" << this << ")" << endl;
 }
-
 
 void Condition::wait()
 {
@@ -28,7 +26,6 @@ void Condition::wait()
     end_atomic();
 }
 
-
 void Condition::signal()
 {
     db<Synchronizer>(TRC) << "Condition::signal(this=" << this << ")" << endl;
@@ -37,7 +34,6 @@ void Condition::signal()
     wakeup();
     end_atomic();
 }
-
 
 void Condition::broadcast()
 {

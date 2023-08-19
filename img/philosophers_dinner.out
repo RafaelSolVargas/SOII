@@ -1,0 +1,28 @@
+
+
+
+
+This is EPOS!
+
+Setting up this machine as follows: 
+  Mode:         library
+  Processor:    1 x RV64 at 1000 MHz (BUS clock = 33 MHz)
+  Machine:      SiFive-U
+  Memory:       131072 KB [0x0000000080000000:0x0000000087ffffff]
+  User memory:  131056 KB [0x0000000080000000:0x0000000087ffc000]
+  I/O space:    524288 KB [0x0000000000000000:0x000000001fffffff]
+  Node Id:      will get from the network!
+  Position:     will get from the network!
+
+[2J[000;000HThe Philosopher's Dinner:
+Philosophers are alive and hungry!
+[007;044H/[013;044H\[016;035H|[013;027H/[007;027H\[019;000HThe dinner is served ...
+[005;032Hthinking[010;044Hthinking[016;039Hthinking[016;024Hthinking[010;020Hthinking[005;032H hungry [005;032H eating [010;044H hungry [016;039H hungry [016;039H eating [016;024H hungry [010;020H hungry [005;032H  sate  [005;032Hthinking[016;039H  sate  [016;039Hthinking[010;020H eating [010;044H eating [005;032H hungry [016;039H hungry [010;020H  sate  [010;020Hthinking[010;044H  sate  [010;044Hthinking[005;032H eating [016;024H eating [010;020H hungry [010;044H hungry [005;032H  sate  [005;032Hthinking[016;024H  sate  [016;024Hthinking[010;020H eating [005;032H hungry [016;039H eating [016;024H hungry [010;020H  sate  [010;020Hthinking[016;039H  sate  [016;039Hthinking[010;020H hungry [010;044H eating [016;024H eating [016;039H hungry [010;044H  sate  [010;044Hthinking[016;024H  sate  [016;024Hthinking[005;032H eating [016;039H eating [010;044H hungry [016;024H hungry [005;032H  sate  [005;032Hthinking[016;039H  sate  [016;039Hthinking[010;020H eating [010;044H eating [005;032H hungry [016;039H hungry [010;020H  sate  [010;020Hthinking[010;044H  sate  [010;044Hthinking[005;032H eating [016;024H eating [010;020H hungry [010;044H hungry [005;032H  sate  [005;032Hthinking[016;024H  sate  [016;024Hthinking[010;020H eating [005;032H hungry [016;039H eating [016;024H hungry [010;020H  sate  [010;020Hthinking[016;039H  sate  [016;039Hthinking[010;020H hungry [010;044H eating [016;024H eating [016;039H hungry [010;044H  sate  [010;044Hthinking[016;024H  sate  [016;024Hthinking[005;032H eating [016;039H eating [010;044H hungry [016;024H hungry [005;032H  sate  [005;032Hthinking[016;039H  sate  [016;039Hthinking[010;020H eating [010;044H eating [005;032H hungry [016;039H hungry [010;020H  sate  [010;020Hthinking[010;044H  sate  [010;044Hthinking[005;032H eating [016;024H eating [010;020H hungry [010;044H hungry [005;032H  sate  [005;032Hthinking[016;024H  sate  [016;024Hthinking[010;020H eating [005;032H hungry [016;039H eating [016;024H hungry [010;020H  sate  [010;020Hthinking[016;039H  sate  [016;039Hthinking[010;020H hungry [010;044H eating [016;024H eating [016;039H hungry [010;044H  sate  [010;044Hthinking[016;024H  sate  [016;024Hthinking[005;032H eating [016;039H eating [010;044H hungry [016;024H hungry [005;032H  sate  [005;032Hthinking[016;039H  sate  [016;039Hthinking[010;020H eating [010;044H eating [005;032H hungry [016;039H hungry [010;020H  sate  [010;020Hthinking[010;044H  sate  [010;044Hthinking[005;032H eating [016;024H eating [010;020H hungry [010;044H hungry [005;032H  sate  [005;032Hthinking[016;024H  sate  [016;024Hthinking[010;020H eating [005;032H hungry [016;039H eating [016;024H hungry [010;020H  sate  [010;020Hthinking[016;039H  sate  [016;039Hthinking[010;020H hungry [010;044H eating [016;024H eating [016;039H hungry [010;044H  sate  [010;044Hthinking[016;024H  sate  [016;024Hthinking[005;032H eating [016;039H eating [010;044H hungry [016;024H hungry [005;032H  sate  [005;032Hthinking[016;039H  sate  [016;039Hthinking[010;020H eating [010;044H eating [005;032H hungry [016;039H hungry [010;020H  sate  [010;020Hthinking[010;044H  sate  [010;044Hthinking[005;032H eating [016;024H eating [010;020H hungry [010;044H hungry [005;032H  sate  [005;032H  done  [016;024H  sate  [016;024Hthinking[010;020H eating [020;000HPhilosopher 0 ate 10 times 
+[016;039H eating [016;024H hungry [010;020H  sate  [010;020H  done  [016;039H  sate  [016;039H  done  [010;044H eating [016;024H eating [010;044H  sate  [010;044H  done  [016;024H  sate  [016;024H  done  [021;000HPhilosopher 1 ate 10 times 
+[022;000HPhilosopher 2 ate 10 times 
+[023;000HPhilosopher 3 ate 10 times 
+[024;000HPhilosopher 4 ate 10 times 
+The end!
+The last thread has exited!
+Rebooting the machine ...
+Machine::reboot()

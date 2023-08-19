@@ -19,7 +19,8 @@ Semaphore full(0);
 int consumer()
 {
     int out = 0;
-    for(int i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++)
+    {
         full.p();
         cout << "C<-" << buffer[out] << " ";
         out = (out + 1) % BUF_SIZE;
@@ -34,11 +35,12 @@ int main()
 {
     cout << "Producer x Consumer" << endl;
 
-    Thread * cons = new Thread(&consumer);
+    Thread *cons = new Thread(&consumer);
 
     // producer
     int in = 0;
-    for(int i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++)
+    {
         empty.p();
         Alarm::delay(100000);
         buffer[in] = 'a' + in;

@@ -4,8 +4,10 @@
 __BEGIN_UTIL
 
 // Utilities
-template<unsigned int KEY_SIZE> class SWAES;
-template<typename T, unsigned int LENGHT> class Array;
+template <unsigned int KEY_SIZE>
+class SWAES;
+template <typename T, unsigned int LENGHT>
+class Array;
 class Bitmaps;
 class Ciphers;
 class CRC;
@@ -22,10 +24,11 @@ class Random;
 class Spin;
 class SREC;
 class Vectors;
-template<typename> class Scheduler;
+template <typename>
+class Scheduler;
 
 typedef unsigned long Hertz;
-typedef unsigned long PPM; // parts per million
+typedef unsigned long PPM;      // parts per million
 typedef unsigned long long PPB; // parts per billion
 
 __END_UTIL
@@ -67,11 +70,13 @@ class GPIO;
 class I2C;
 class ADC;
 class FPGA;
-template<unsigned int KEY_SIZE> class HWAES;
+template <unsigned int KEY_SIZE>
+class HWAES;
 class Ethernet;
 class IEEE802_15_4;
 class Modem;
-template<typename Family> class NIC;
+template <typename Family>
+class NIC;
 class PCNet32;
 class RTL8139;
 class C905;
@@ -132,14 +137,16 @@ class Chronometer;
 class Alarm;
 class Delay;
 
-template<typename T> class Clerk;
+template <typename T>
+class Clerk;
 class Monitor;
 
 class Network;
 class ELP;
 class TSTPOE;
 class TSTP;
-template<typename NIC, typename Network, unsigned int HTYPE> class ARP;
+template <typename NIC, typename Network, unsigned int HTYPE>
+class ARP;
 class IP;
 class ICMP;
 class UDP;
@@ -147,67 +154,151 @@ class TCP;
 class DHCP;
 class HTTP;
 class IPC;
-template<typename Channel, bool connectionless = Channel::connectionless> class Link;
-template<typename Channel, bool connectionless = Channel::connectionless> class Port;
+template <typename Channel, bool connectionless = Channel::connectionless>
+class Link;
+template <typename Channel, bool connectionless = Channel::connectionless>
+class Port;
 
 class SmartData;
-template<typename Transducer, typename Network = TSTP> class Responsive_SmartData;
-template<typename Transducer, typename Network = TSTP> class Interested_SmartData;
+template <typename Transducer, typename Network = TSTP>
+class Responsive_SmartData;
+template <typename Transducer, typename Network = TSTP>
+class Interested_SmartData;
 
 // Framework
 class Framework;
-template<typename Component> class Handle;
-template<typename Component, bool remote> class Stub;
-template<typename Component> class Proxy;
-template<typename Component> class Adapter;
-template<typename Component> class Scenario;
+template <typename Component>
+class Handle;
+template <typename Component, bool remote>
+class Stub;
+template <typename Component>
+class Proxy;
+template <typename Component>
+class Adapter;
+template <typename Component>
+class Scenario;
 class Agent;
 
 // Aspects
 class Aspect;
-template<typename Component> class Authenticated;
-template<typename Component> class Shared;
-template<typename Component> class Remote;
+template <typename Component>
+class Authenticated;
+template <typename Component>
+class Shared;
+template <typename Component>
+class Remote;
 
 // Configuration Tokens
 struct Traits_Tokens
 {
     // EPOS software architecture (aka mode)
-    enum {LIBRARY, BUILTIN, KERNEL};
+    enum
+    {
+        LIBRARY,
+        BUILTIN,
+        KERNEL
+    };
 
     // CPU hardware architectures
-    enum {AVR8, H8, ARMv4, ARMv7, ARMv8, IA32, X86_64, SPARCv8, PPC32, RV32, RV64};
+    enum
+    {
+        AVR8,
+        H8,
+        ARMv4,
+        ARMv7,
+        ARMv8,
+        IA32,
+        X86_64,
+        SPARCv8,
+        PPC32,
+        RV32,
+        RV64
+    };
 
     // Machines
-    enum {eMote1, eMote2, STK500, RCX, Cortex, PC, Leon, Virtex, RISCV};
+    enum
+    {
+        eMote1,
+        eMote2,
+        STK500,
+        RCX,
+        Cortex,
+        PC,
+        Leon,
+        Virtex,
+        RISCV
+    };
 
     // Machine models
-    enum {Unique, Legacy_PC, eMote3, LM3S811, Zynq, Realview_PBX, Raspberry_Pi3, SiFive_E, SiFive_U};
+    enum
+    {
+        Unique,
+        Legacy_PC,
+        eMote3,
+        LM3S811,
+        Zynq,
+        Realview_PBX,
+        Raspberry_Pi3,
+        SiFive_E,
+        SiFive_U
+    };
 
     // Architecture endianness
-    enum {LITTLE, BIG};
+    enum
+    {
+        LITTLE,
+        BIG
+    };
 
     // Serial display engines
-    enum {UART, USB};
+    enum
+    {
+        UART,
+        USB
+    };
 
     // Life span multipliers
-    enum {FOREVER = 0, SECOND = 1, MINUTE = 60, HOUR = 3600, DAY = 86400, WEEK = 604800, MONTH = 2592000, YEAR = 31536000};
+    enum
+    {
+        FOREVER = 0,
+        SECOND = 1,
+        MINUTE = 60,
+        HOUR = 3600,
+        DAY = 86400,
+        WEEK = 604800,
+        MONTH = 2592000,
+        YEAR = 31536000
+    };
 
     // IP configuration strategies
-    enum {STATIC, MAC, INFO, RARP, DHCP};
+    enum
+    {
+        STATIC,
+        MAC,
+        INFO,
+        RARP,
+        DHCP
+    };
 
     // SmartData predictors
-    enum :unsigned char {NONE, LVP, DBP};
+    enum : unsigned char
+    {
+        NONE,
+        LVP,
+        DBP
+    };
 };
 
 // Monitor events (Transducers)
-enum Transducer_Event {
+enum Transducer_Event
+{
     CPU_TEMPERATURE,
     CPU_VOLTAGE,
 };
 
 // Monitor events (System)
-enum System_Event {
+enum System_Event
+{
     ELAPSED_TIME,
     DEADLINE_MISSES,
     CPU_EXECUTION_TIME,
@@ -216,13 +307,16 @@ enum System_Event {
 };
 
 // Monitor events (PMU)
-enum PMU_Event {
+enum PMU_Event
+{
     CPU_CYCLES,
     UNHALTED_CYCLES,
 
     INSTRUCTIONS_RETIRED,
-    LOAD_INSTRUCTIONS_RETIRED,                      INTEGER_LOAD_INSTRUCTIONS_RETIRED = LOAD_INSTRUCTIONS_RETIRED,
-    STORE_INSTRUCTIONS_RETIRED,                     INTEGER_STORE_INSTRUCTIONS_RETIRED = STORE_INSTRUCTIONS_RETIRED,
+    LOAD_INSTRUCTIONS_RETIRED,
+    INTEGER_LOAD_INSTRUCTIONS_RETIRED = LOAD_INSTRUCTIONS_RETIRED,
+    STORE_INSTRUCTIONS_RETIRED,
+    INTEGER_STORE_INSTRUCTIONS_RETIRED = STORE_INSTRUCTIONS_RETIRED,
     INTEGER_ARITHMETIC_INSTRUCTIONS_RETIRED,
     INTEGER_MULTIPLICATION_INSTRUCTIONS_RETIRED,
     INTEGER_DIVISION_INSTRUCTIONS_RETIRED,
@@ -244,13 +338,19 @@ enum PMU_Event {
     L1_CACHE_MISSES,
     L1_DATA_CACHE_MISSES,
     L1_DATA_CACHE_WRITEBACKS,
-    L1_INSTRUCTION_CACHE_MISSES,                    INSTRUCTION_CACHE_MISSES = L1_INSTRUCTION_CACHE_MISSES,
+    L1_INSTRUCTION_CACHE_MISSES,
+    INSTRUCTION_CACHE_MISSES = L1_INSTRUCTION_CACHE_MISSES,
     L2_CACHE_HITS,
     L2_CACHE_MISSES,
     L2_DATA_CACHE_MISSES,
     L2_DATA_CACHE_WRITEBACKS,
     L3_CACHE_HITS,
-    L3_CACHE_MISSES,                                LAST_LEVEL_CACHE_HITS = L3_CACHE_HITS, LAST_LEVEL_CACHE_MISSES = L3_CACHE_MISSES, CACHE_MISSES = LAST_LEVEL_CACHE_MISSES, MEMORY_ACCESSES = LAST_LEVEL_CACHE_MISSES, DATA_MEMORY_ACCESSES = LAST_LEVEL_CACHE_MISSES,
+    L3_CACHE_MISSES,
+    LAST_LEVEL_CACHE_HITS = L3_CACHE_HITS,
+    LAST_LEVEL_CACHE_MISSES = L3_CACHE_MISSES,
+    CACHE_MISSES = LAST_LEVEL_CACHE_MISSES,
+    MEMORY_ACCESSES = LAST_LEVEL_CACHE_MISSES,
+    DATA_MEMORY_ACCESSES = LAST_LEVEL_CACHE_MISSES,
 
     INSTRUCTION_MEMORY_ACCESSES,
     UNCACHED_MEMORY_ACCESSES,
@@ -259,17 +359,19 @@ enum PMU_Event {
     BUS_CYCLES,
     BUS_ACCESSES,
     TLB_MISSES,
-    DATA_TLB_MISSES = TLB_MISSES,                   MMU_MISSES = TLB_MISSES,
+    DATA_TLB_MISSES = TLB_MISSES,
+    MMU_MISSES = TLB_MISSES,
     INSTRUCTION_TLB_MISSES,
     MEMORY_ERRORS,
 
     STALL_CYCLES,
-    STALL_CYCLES_CACHE,                             STALL_CYCLES_INSTRUCTION_CACHE = STALL_CYCLES_CACHE,
+    STALL_CYCLES_CACHE,
+    STALL_CYCLES_INSTRUCTION_CACHE = STALL_CYCLES_CACHE,
     STALL_CYCLES_DATA_CACHE,
     STALL_CYCLES_TLB,
     STALL_CYCLES_MEMORY,
-    PIPELINE_SERIALIZATIONS,    // ISB
-    BUS_SERIALIZATION,          // DSB = 44
+    PIPELINE_SERIALIZATIONS, // ISB
+    BUS_SERIALIZATION,       // DSB = 44
 
 #if defined(__ia32__) || defined(__riscv__) || defined(__cortex_a__)
     ARCHITECTURE_DEPENDENT_EVENT45,
@@ -477,8 +579,9 @@ enum PMU_Event {
     LAST_EVENT
 };
 
-template<typename T>
-struct Traits {
+template <typename T>
+struct Traits
+{
     // Traits for components that do not declare any
     static const bool enabled = true;
     static const bool monitored = false;

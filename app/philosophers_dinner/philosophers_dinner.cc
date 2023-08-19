@@ -11,8 +11,8 @@ const int iterations = 10;
 
 Mutex table;
 
-Thread * phil[5];
-Semaphore * chopstick[5];
+Thread *phil[5];
+Semaphore *chopstick[5];
 
 OStream cout;
 
@@ -25,10 +25,10 @@ int main()
     Display::position(0, 0);
     cout << "The Philosopher's Dinner:" << endl;
 
-    for(int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++)
         chopstick[i] = new Semaphore;
 
-    phil[0] = new Thread(&philosopher, 0,  5, 32);
+    phil[0] = new Thread(&philosopher, 0, 5, 32);
     phil[1] = new Thread(&philosopher, 1, 10, 44);
     phil[2] = new Thread(&philosopher, 2, 16, 39);
     phil[3] = new Thread(&philosopher, 3, 16, 24);
@@ -51,7 +51,8 @@ int main()
     cout << "The dinner is served ..." << endl;
     table.unlock();
 
-    for(int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         int ret = phil[i]->join();
         table.lock();
         Display::position(20 + i, 0);
@@ -59,9 +60,9 @@ int main()
         table.unlock();
     }
 
-    for(int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++)
         delete chopstick[i];
-    for(int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++)
         delete phil[i];
 
     cout << "The end!" << endl;
@@ -71,10 +72,11 @@ int main()
 
 int philosopher(int n, int l, int c)
 {
-    int first = (n < 4)? n : 0;
-    int second = (n < 4)? n + 1 : 4;
+    int first = (n < 4) ? n : 0;
+    int second = (n < 4) ? n + 1 : 4;
 
-    for(int i = iterations; i > 0; i--) {
+    for (int i = iterations; i > 0; i--)
+    {
 
         table.lock();
         Display::position(l, c);
@@ -88,8 +90,8 @@ int philosopher(int n, int l, int c)
         cout << " hungry ";
         table.unlock();
 
-        chopstick[first]->p();   // get first chopstick
-        chopstick[second]->p();  // get second chopstick
+        chopstick[first]->p();  // get first chopstick
+        chopstick[second]->p(); // get second chopstick
 
         table.lock();
         Display::position(l, c);
@@ -103,8 +105,8 @@ int philosopher(int n, int l, int c)
         cout << "  sate  ";
         table.unlock();
 
-        chopstick[first]->v();   // release first chopstick
-        chopstick[second]->v();  // release second chopstick
+        chopstick[first]->v();  // release first chopstick
+        chopstick[second]->v(); // release second chopstick
     }
 
     table.lock();

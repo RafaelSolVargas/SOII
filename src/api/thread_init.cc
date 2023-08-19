@@ -7,7 +7,10 @@
 
 __BEGIN_SYS
 
-extern "C" { void __epos_app_entry(); }
+extern "C"
+{
+    void __epos_app_entry();
+}
 
 void Thread::init()
 {
