@@ -16,6 +16,7 @@ Scheduler_Timer *Thread::_timer;
 Thread *volatile Thread::_running;
 Thread::Queue Thread::_ready;
 Thread::Queue Thread::_suspended;
+Thread *Thread::_idleThread;
 
 void Thread::constructor_prologue(unsigned int stack_size)
 {
@@ -67,6 +68,9 @@ Thread::~Thread()
 
     if (_joining)
         _joining->resume();
+
+    if (_idleThread)
+        delete _idleThread;
 
     unlock();
 
@@ -129,11 +133,7 @@ void Thread::suspend()
 
     if (_running == this)
     {
-        while (_ready.empty())
-            idle();
-
-        _running = _ready.remove()->object();
-        _running->_state = RUNNING;
+        _running = get_next_running_thread();
 
         dispatch(this, _running);
     }
@@ -161,19 +161,18 @@ void Thread::yield()
 
     db<Thread>(TRC) << "Thread::yield(running=" << _running << ")" << endl;
 
-    if (!_ready.empty())
+    Thread *prev = _running;
+    prev->_state = READY;
+
+    // Don't insert idleThread in queue
+    if (!prev->is_idle_thread)
     {
-        Thread *prev = _running;
-        prev->_state = READY;
         _ready.insert(&prev->_link);
-
-        _running = _ready.remove()->object();
-        _running->_state = RUNNING;
-
-        dispatch(prev, _running);
     }
-    else
-        idle();
+
+    _running = get_next_running_thread();
+
+    dispatch(prev, _running);
 
     unlock();
 }
@@ -196,19 +195,9 @@ void Thread::exit(int status)
         lock();
     }
 
-    while (_ready.empty() && !_suspended.empty())
-        idle(); // implicit unlock();
-    lock();
-
-    if (!_ready.empty())
+    // If both queue empty then we finish the execution
+    if (_ready.empty() && _suspended.empty())
     {
-        _running = _ready.remove()->object();
-        _running->_state = RUNNING;
-
-        dispatch(prev, _running);
-    }
-    else
-    { // _ready.empty() && _suspended.empty()
         db<Thread>(WRN) << "The last thread has exited!" << endl;
         if (reboot)
         {
@@ -221,8 +210,36 @@ void Thread::exit(int status)
             CPU::halt();
         }
     }
+    else
+    {
+        _running = get_next_running_thread();
+
+        dispatch(prev, _running);
+    }
 
     unlock();
+}
+
+// Always return a Thread to be scheduled, could be a Thread from the _ready queue or the idleThread
+// Already sets the thread state to RUNNING
+Thread *Thread::get_next_running_thread()
+{
+    assert(locked());
+
+    // If someone's ready, returns it
+    if (!_ready.empty())
+    {
+        Thread *next = _ready.remove()->object();
+        next->_state = RUNNING;
+
+        return next;
+    }
+    else
+    {
+        _idleThread->_state = RUNNING;
+
+        return _idleThread;
+    }
 }
 
 void Thread::sleep(Queue *q)
@@ -236,8 +253,7 @@ void Thread::sleep(Queue *q)
     prev->_waiting = q;
     q->insert(&prev->_link);
 
-    _running = _ready.remove()->object();
-    _running->_state = RUNNING;
+    _running = get_next_running_thread();
 
     dispatch(prev, _running);
 }

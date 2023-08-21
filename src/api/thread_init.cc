@@ -20,6 +20,9 @@ void Thread::init()
     // In this case, _init will have already been called, before Init_Application to construct MAIN's global objects.
     Thread::_running = new (kmalloc(sizeof(Thread))) Thread(Thread::Configuration(Thread::RUNNING, Thread::NORMAL), reinterpret_cast<int (*)()>(__epos_app_entry));
 
+    Thread::_idleThread = new (kmalloc(sizeof(Thread))) Thread(Thread::Configuration(Thread::READY, Thread::NORMAL), &Thread::just_idle);
+    _idleThread->is_idle_thread = true;
+
     _timer = new (kmalloc(sizeof(Scheduler_Timer))) Scheduler_Timer(QUANTUM, time_slicer);
 
     // No more interrupts until we reach init_end
@@ -27,6 +30,22 @@ void Thread::init()
 
     // Transition from CPU-based locking to thread-based locking
     This_Thread::not_booting();
+}
+
+// Function of the Idle Thread
+int Thread::just_idle()
+{
+    while (true)
+    {
+        idle();
+
+        if (_ready.empty() && _suspended.empty())
+        {
+            exit();
+        }
+    }
+
+    return 0;
 }
 
 __END_SYS
