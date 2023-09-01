@@ -8,7 +8,7 @@ typedef __SIZE_TYPE__ size_t;
 __BEGIN_API
 
 // Memory allocators
-enum System_Allocator { SYSTEM };
+enum System_Allocator { SYSTEM, CONTIGUOUS_BUFFER };
 enum Scratchpad_Allocator { SCRATCHPAD };
 enum Color {
     COLOR_0,  COLOR_1,  COLOR_2,  COLOR_3,  COLOR_4,  COLOR_5,  COLOR_6,  COLOR_7,

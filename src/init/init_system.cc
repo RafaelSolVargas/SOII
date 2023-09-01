@@ -12,6 +12,7 @@ class Init_System
 {
 private:
     static const unsigned int HEAP_SIZE = Traits<System>::HEAP_SIZE;
+    static const unsigned int BUFFER_SIZE = Traits<System>::CONTIGUOUS_BUFFER_SIZE;
 
 public:
     Init_System() {
@@ -33,8 +34,24 @@ public:
             if(!heap)
                 db<Init>(ERR) << "Failed to initialize the system's heap!" << endl;
             System::_heap = new (&System::_preheap[sizeof(Segment)]) Heap(heap, System::_heap_segment->size());
-        } else
+        } else {
             System::_heap = new (&System::_preheap[0]) Heap(MMU::alloc(MMU::pages(HEAP_SIZE)), HEAP_SIZE);
+        }
+
+
+       if(Traits<System>::buffer_enable) {
+            db<Init>(INF) << "Initializing system's Buffer: " << endl;
+    
+            System::_buffer_segment = new (&System::_prebuffer[0]) Segment(BUFFER_SIZE, Segment::Flags::SYSD);
+            
+            char * buffer = Address_Space(MMU::current()).attach(System::_buffer_segment);
+            
+            if(!buffer) {
+                db<Init>(ERR) << "Failed to initialize the system's Buffer!" << endl;
+            }
+            
+            System::_buffer = new (&System::_prebuffer[sizeof(Segment)]) ContiguousBuffer(buffer, System::_buffer_segment->size());
+        }  
 
         db<Init>(INF) << "Initializing the machine: " << endl;
         Machine::init();

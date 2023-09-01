@@ -2,6 +2,7 @@
 
 #include <utility/ostream.h>
 #include <utility/heap.h>
+#include <utility/nic_buffers.h>
 #include <machine.h>
 #include <memory.h>
 #include <process.h>
@@ -21,6 +22,10 @@ System_Info * System::_si = (Memory_Map::SYS_INFO != Memory_Map::NOT_USED) ? rei
 char System::_preheap[];
 Segment * System::_heap_segment;
 Heap * System::_heap;
+
+char System::_prebuffer[];
+Segment * System::_buffer_segment;
+ContiguousBuffer * System::_buffer;
 
 __END_SYS
 

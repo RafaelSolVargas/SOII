@@ -118,6 +118,8 @@ class CEDF;
 class PRM;
 class EA_PEDF;
 
+class NicBuffers;
+
 class Address_Space;
 class Segment;
 

@@ -93,7 +93,7 @@ template<> struct Traits<Serial_Display>: public Traits<Machine_Common>
 
 template<> struct Traits<Scratchpad>: public Traits<Machine_Common>
 {
-    static const bool enabled = false;
+    static const bool enabled = true;
 };
 
 __END_SYS

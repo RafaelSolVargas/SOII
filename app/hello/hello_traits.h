@@ -29,8 +29,8 @@ template<> struct Traits<Debug>: public Traits<Build>
 {
     static const bool error   = true;
     static const bool warning = true;
-    static const bool info    = false;
-    static const bool trace   = false;
+    static const bool info    = true;
+    static const bool trace   = true;
 };
 
 template<> struct Traits<Lists>: public Traits<Build>
@@ -94,12 +94,16 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = Traits<Machine>::HEAP_SIZE;
     static const unsigned int MAX_THREADS = Traits<Machine>::MAX_THREADS;
+    static const unsigned int BUFFER_ENABLED = true;
+    static const unsigned int NETWORK_BUFFERS_MAXIMUM_CLIENTS = 3;
 };
 
 template<> struct Traits<System>: public Traits<Build>
 {
     static const bool multithread = (Traits<Application>::MAX_THREADS > 1);
-    static const bool multiheap = Traits<Scratchpad>::enabled;
+    static const bool multiheap = true;
+
+    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
 
     static const unsigned long LIFE_SPAN = 1 * YEAR; // s
     static const unsigned int DUTY_CYCLE = 1000000; // ppm
@@ -108,7 +112,18 @@ template<> struct Traits<System>: public Traits<Build>
 
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
+
+    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NETWORK_BUFFERS_MAXIMUM_CLIENTS * 65536; // 64 Kb
 };
+
+template<> struct Traits<NicBuffers>: public Traits<Build>
+{
+    static const bool error   = true;
+    static const bool warning = true;
+    static const bool info    = true;
+    static const bool trace   = true;
+};
+
 
 template<> struct Traits<Thread>: public Traits<Build>
 {

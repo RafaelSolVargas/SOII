@@ -3,6 +3,7 @@
 #ifndef __system_h
 #define __system_h
 
+#include <utility/nic_buffers.h>
 #include <utility/string.h>
 #include <utility/heap.h>
 #include <system/info.h>
@@ -26,7 +27,7 @@ private:
 
 class System
 {
-    friend class Init_System;                                                   // for _heap
+    friend class Init_System;                                                   // for _heap and _buffer
     friend class Init_Application;                                              // for _heap with multiheap = false
     friend void CPU::Context::load() const volatile;
     friend void * ::malloc(size_t);						// for _heap
@@ -37,6 +38,12 @@ class System
     friend void ::operator delete[](void *);					// for _heap
 
 public:
+    /* 
+    Código que seria utilizado por novas implementações de Delete
+    Ainda é necessário verificar com o professor
+    static void deleteFromBuffer(void * object) {
+        _buffer->free(object);
+    } */
     static System_Info * const info() { assert(_si); return _si; }
 
 private:
@@ -47,6 +54,10 @@ private:
     static char _preheap[(Traits<System>::multiheap ? sizeof(Segment) : 0) + sizeof(Heap)];
     static Segment * _heap_segment;
     static Heap * _heap;
+
+    static char _prebuffer[(Traits<System>::multiheap ? sizeof(Segment) : 0)];
+    static Segment * _buffer_segment;
+    static ContiguousBuffer * _buffer;
 };
 
 __END_SYS
@@ -70,9 +81,18 @@ extern "C"
 
     inline void free(void * ptr) {
         __USING_SYS;
-        if(Traits<System>::multiheap)
+
+        db<MMU>(TRC) << "Free of pointer=" << ptr << " from";   
+        if (System::_buffer->contains_pointer(ptr)) {
+            db<MMU>(TRC) << " buffer." << endl;
+
+            return System::_buffer->free(ptr);
+        }
+
+        db<MMU>(TRC) << " heap." << endl;
+        if(Traits<System>::multiheap) 
             Heap::typed_free(ptr);
-        else
+        else 
             Heap::untyped_free(System::_heap, ptr);
     }
 }
@@ -87,11 +107,25 @@ inline void * operator new[](size_t bytes) {
 }
 
 inline void * operator new(size_t bytes, const EPOS::System_Allocator & allocator) {
-    return _SYS::System::_heap->alloc(bytes);
+    if (allocator == EPOS::System_Allocator::CONTIGUOUS_BUFFER) 
+    {
+        return _SYS::System::_buffer->alloc(bytes);
+    }
+    else // SYSTEM
+    {
+        return _SYS::System::_heap->alloc(bytes);
+    } 
 }
 
 inline void * operator new[](size_t bytes, const EPOS::System_Allocator & allocator) {
-    return _SYS::System::_heap->alloc(bytes);
+    if (allocator == EPOS::System_Allocator::CONTIGUOUS_BUFFER) 
+    {
+        return _SYS::System::_buffer->alloc(bytes);
+    }
+    else // SYSTEM
+    {
+        return _SYS::System::_heap->alloc(bytes);
+    } 
 }
 
 // Delete cannot be declared inline due to virtual destructors
