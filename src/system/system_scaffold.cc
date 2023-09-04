@@ -23,9 +23,13 @@ char System::_preheap[];
 Segment * System::_heap_segment;
 Heap * System::_heap;
 
-char System::_prebuffer[];
-Segment * System::_buffer_segment;
-ContiguousBuffer * System::_buffer;
+char System::_preCbuffer[];
+Segment * System::_Cbuffer_segment;
+CBuffer * System::_Cbuffer;
+
+char System::_preNCbuffer[];
+Segment * System::_NCbuffer_segment;
+NonCBuffer * System::_NCbuffer;
 
 __END_SYS
 

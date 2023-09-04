@@ -1,10 +1,12 @@
 {
     "cSpell.words": [
         "Begl",
+        "Cbuffer",
         "GAMECONFIGS",
         "IOTHREAD",
         "KBHANDLER",
         "PLAYERSHIP",
+        "preheap",
         "shooty",
         "SPACESHOOTER"
     ],

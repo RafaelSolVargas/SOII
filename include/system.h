@@ -46,6 +46,9 @@ public:
     } */
     static System_Info * const info() { assert(_si); return _si; }
 
+    static CBuffer * Cbuffer() {return _Cbuffer; }
+    static NonCBuffer * NCbuffer() {return _NCbuffer; }
+
 private:
     static void init();
 
@@ -55,9 +58,13 @@ private:
     static Segment * _heap_segment;
     static Heap * _heap;
 
-    static char _prebuffer[(Traits<System>::multiheap ? sizeof(Segment) : 0)];
-    static Segment * _buffer_segment;
-    static ContiguousBuffer * _buffer;
+    static char _preCbuffer[(Traits<System>::buffer_enable ? sizeof(Segment) : 0)];
+    static Segment * _Cbuffer_segment;
+    static CBuffer * _Cbuffer;
+
+    static char _preNCbuffer[(Traits<System>::buffer_enable ? sizeof(Segment) : 0)];
+    static Segment * _NCbuffer_segment;
+    static NonCBuffer * _NCbuffer;
 };
 
 __END_SYS
@@ -83,10 +90,16 @@ extern "C"
         __USING_SYS;
 
         db<MMU>(TRC) << "Free of pointer=" << ptr << " from";   
-        if (System::_buffer->contains_pointer(ptr)) {
-            db<MMU>(TRC) << " buffer." << endl;
+        if (System::_Cbuffer->contains_pointer(ptr)) {
+            db<MMU>(TRC) << " Cbuffer." << endl;
 
-            return System::_buffer->free(ptr);
+            return System::_Cbuffer->free(ptr);
+        }
+
+        if (System::_NCbuffer->contains_pointer(ptr)) {
+            db<MMU>(TRC) << " NCbuffer." << endl;
+
+            return System::_NCbuffer->free(ptr);
         }
 
         db<MMU>(TRC) << " heap." << endl;
@@ -109,7 +122,11 @@ inline void * operator new[](size_t bytes) {
 inline void * operator new(size_t bytes, const EPOS::System_Allocator & allocator) {
     if (allocator == EPOS::System_Allocator::CONTIGUOUS_BUFFER) 
     {
-        return _SYS::System::_buffer->alloc(bytes);
+        return _SYS::System::_Cbuffer->alloc(bytes);
+    }
+    else if (allocator == EPOS::System_Allocator::NON_CONTIGUOUS_BUFFER) 
+    {
+        return _SYS::System::_NCbuffer->alloc(bytes);
     }
     else // SYSTEM
     {
@@ -120,7 +137,11 @@ inline void * operator new(size_t bytes, const EPOS::System_Allocator & allocato
 inline void * operator new[](size_t bytes, const EPOS::System_Allocator & allocator) {
     if (allocator == EPOS::System_Allocator::CONTIGUOUS_BUFFER) 
     {
-        return _SYS::System::_buffer->alloc(bytes);
+        return _SYS::System::_Cbuffer->alloc(bytes);
+    }
+    else if (allocator == EPOS::System_Allocator::NON_CONTIGUOUS_BUFFER) 
+    {
+        return _SYS::System::_NCbuffer->alloc(bytes);
     }
     else // SYSTEM
     {

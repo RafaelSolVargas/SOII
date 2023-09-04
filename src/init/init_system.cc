@@ -12,7 +12,8 @@ class Init_System
 {
 private:
     static const unsigned int HEAP_SIZE = Traits<System>::HEAP_SIZE;
-    static const unsigned int BUFFER_SIZE = Traits<System>::CONTIGUOUS_BUFFER_SIZE;
+    static const unsigned int C_BUFFER_SIZE = Traits<System>::CONTIGUOUS_BUFFER_SIZE;
+    static const unsigned int NC_BUFFER_SIZE = Traits<System>::NON_CONTIGUOUS_BUFFER_SIZE;
 
 public:
     Init_System() {
@@ -40,17 +41,31 @@ public:
 
 
        if(Traits<System>::buffer_enable) {
-            db<Init>(INF) << "Initializing system's Buffer: " << endl;
-    
-            System::_buffer_segment = new (&System::_prebuffer[0]) Segment(BUFFER_SIZE, Segment::Flags::SYSD);
+            db<Init>(INF) << "Initializing system's Contiguous Buffer: " << endl;
+            System::_Cbuffer_segment = new (&System::_preCbuffer[0]) Segment(C_BUFFER_SIZE, Segment::Flags::SYSD);
             
-            char * buffer = Address_Space(MMU::current()).attach(System::_buffer_segment);
+            char * Cbuffer = Address_Space(MMU::current()).attach(System::_Cbuffer_segment);
             
-            if(!buffer) {
-                db<Init>(ERR) << "Failed to initialize the system's Buffer!" << endl;
+            if(!Cbuffer) 
+            {
+                db<Init>(ERR) << "Failed to initialize the system's Contiguous Buffer!" << endl;
             }
+            System::_Cbuffer = new (&System::_preCbuffer[sizeof(Segment)]) CBuffer(Cbuffer, System::_Cbuffer_segment->size());
+
+
+
+            db<Init>(INF) << "Initializing system's Non Contiguous Buffer: " << endl;
+            System::_NCbuffer_segment = new (&System::_preNCbuffer[0]) Segment(NC_BUFFER_SIZE, Segment::Flags::SYSD);
             
-            System::_buffer = new (&System::_prebuffer[sizeof(Segment)]) ContiguousBuffer(buffer, System::_buffer_segment->size());
+            char * nonCBuffer = Address_Space(MMU::current()).attach(System::_NCbuffer_segment);
+            
+            if(!nonCBuffer) 
+            {
+                db<Init>(ERR) << "Failed to initialize the system's  Non Contiguous Buffer!" << endl;
+            }
+
+            unsigned long segment_size = System::_NCbuffer_segment->size();
+            System::_NCbuffer = new (&System::_preNCbuffer[sizeof(Segment)]) NonCBuffer(nonCBuffer, segment_size);
         }  
 
         db<Init>(INF) << "Initializing the machine: " << endl;

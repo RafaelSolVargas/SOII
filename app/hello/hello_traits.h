@@ -95,7 +95,7 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int HEAP_SIZE = Traits<Machine>::HEAP_SIZE;
     static const unsigned int MAX_THREADS = Traits<Machine>::MAX_THREADS;
     static const unsigned int BUFFER_ENABLED = true;
-    static const unsigned int NETWORK_BUFFERS_MAXIMUM_CLIENTS = 3;
+    static const unsigned int NET_BUFFERS_CLIENTS = 1;
 };
 
 template<> struct Traits<System>: public Traits<Build>
@@ -113,7 +113,8 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
 
-    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NETWORK_BUFFERS_MAXIMUM_CLIENTS * 65536; // 64 Kb
+    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 1500; // 1500 bytes
+    static const unsigned int NON_CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 65536; // 64 Kb
 };
 
 template<> struct Traits<NicBuffers>: public Traits<Build>
@@ -130,6 +131,8 @@ template<> struct Traits<Thread>: public Traits<Build>
     static const bool enabled = Traits<System>::multithread;
     static const bool trace_idle = hysterically_debugged;
     static const bool simulate_capacity = false;
+    static const bool trace = false;
+    static const bool info = false;
 
     typedef RR Criterion;
     static const unsigned int QUANTUM = 10000; // us
