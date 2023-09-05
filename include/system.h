@@ -89,20 +89,18 @@ extern "C"
     inline void free(void * ptr) {
         __USING_SYS;
 
-        db<MMU>(TRC) << "Free of pointer=" << ptr << " from";   
         if (System::_Cbuffer->contains_pointer(ptr)) {
-            db<MMU>(TRC) << " Cbuffer." << endl;
+            db<MMU>(TRC) << "Pointer=" << ptr << " recognized by CBuffer" << endl;;   
 
             return System::_Cbuffer->free(ptr);
         }
 
         if (System::_NCbuffer->contains_pointer(ptr)) {
-            db<MMU>(TRC) << " NCbuffer." << endl;
+            db<MMU>(TRC) << "Pointer=" << ptr << " recognized by NCBuffer" << endl;;   
 
             return System::_NCbuffer->free(ptr);
         }
 
-        db<MMU>(TRC) << " heap." << endl;
         if(Traits<System>::multiheap) 
             Heap::typed_free(ptr);
         else 

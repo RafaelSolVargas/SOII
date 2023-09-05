@@ -26,11 +26,17 @@ public:
     CBuffer(void * addr, unsigned long bytes) {
         db<Init, NicBuffers>(TRC) << "CBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
 
+        if(!Traits<CPU>::unaligned_memory_access)
+            while((bytes % sizeof(void *)))
+                ++bytes;
+
         long * addr_long = reinterpret_cast<long *>(addr);
 
         // Minimum and maximum address that could be returned by alloc()
         minimum_address = addr_long;
-        maximum_address = addr_long + bytes;
+        maximum_address = addr_long + (bytes / sizeof(long));
+
+        db<Init, NicBuffers>(TRC) << "CBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
 
         internal_free(addr, bytes);
     }
@@ -41,7 +47,7 @@ public:
     bool contains_pointer(void * ptr) {
         long * addr = reinterpret_cast<long *>(ptr);
    
-        return addr >= minimum_address && addr <= maximum_address;
+        return addr >= minimum_address && addr < maximum_address;
     }
 
     /// @brief Allocate bytes contiguous size of memory in the Buffer, returning the address that was allocated
@@ -113,11 +119,7 @@ public:
         : _original_size(totalSize), _total_size(totalSize), _quant_chunks(totalChunks)
     {
         _chunks = new void*[totalChunks];
-        _chunks_sizes = new int[totalChunks];
-
-        for (int i = 0; i < totalChunks; i++) {
-            _chunks_sizes[i] = 1;
-        }
+        _chunks_sizes = new unsigned long[totalChunks];
     }
 
     ~MemAllocationMap()
@@ -149,13 +151,14 @@ public:
     unsigned long total_size() { return _total_size; }
     int quant_chunks() { return _quant_chunks; }
     void** chunks() { return _chunks; }
-    int* chunks_sizes() { return _chunks_sizes; }
+    unsigned long* chunks_sizes() { return _chunks_sizes; }
+
 private:
     unsigned long _original_size;
     unsigned long _total_size;
     int _quant_chunks;
     void **_chunks;     
-    int *_chunks_sizes;
+    unsigned long *_chunks_sizes;
 };
 
 // Contiguous Buffer to be used to pass contiguous data directly to the DMA 
@@ -174,11 +177,17 @@ public:
     NonCBuffer(void * addr, unsigned long bytes) {
         db<Init, NicBuffers>(TRC) << "NonCBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
 
+        if(!Traits<CPU>::unaligned_memory_access)
+            while((bytes % sizeof(void *)))
+                ++bytes;
+
         long * addr_long = reinterpret_cast<long *>(addr);
 
         // Minimum and maximum address that could be returned by alloc()
         minimum_address = addr_long;
-        maximum_address = addr_long + bytes;
+        maximum_address = addr_long + (bytes / sizeof(long));
+
+        db<Init, NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
 
         internal_free(addr, bytes);
     }
@@ -191,7 +200,7 @@ public:
     bool contains_pointer(void * ptr) {
         long * addr = reinterpret_cast<long *>(ptr);
    
-        return addr >= minimum_address && addr <= maximum_address;
+        return addr >= minimum_address && addr < maximum_address;
     }
 
     /// @brief Allocate bytes, that could be non contiguous, memory in the Buffer
@@ -199,7 +208,6 @@ public:
     /// @return (AllocationMap *) -> Pointer to the Map of the allocated memory
     /// @throws out_of_memory if was not found space for allocate for required bytes.
     AllocationMap * alloc(unsigned long bytes) {
-        db<NicBuffers>(TRC) << "****************************"  << endl;
         db<NicBuffers>(TRC) << "NonCBuffer::alloc(bytes= " << bytes << ")" << endl;
         if(!bytes)
             return 0;
@@ -208,19 +216,17 @@ public:
             while((bytes % sizeof(void *)))
                 ++bytes;
 
-        // Verifica se eu coloco isso aqui ou dentro de cada bloco
-        bytes += sizeof(long);        // add room for size
+        // The size will be allocated in the AllocationMap
+        // Minimum size is the Element
         if(bytes < sizeof(Element))
             bytes = sizeof(Element);
 
-
-        // Verify if the Buffer contains space for bytes.
+        // Verify if the Buffer contains space, possibly fragmented for bytes.
         if (grouped_size() < bytes) 
         {
             out_of_memory(bytes);
         }
 
-        // Creates the MemoryMap 
         unsigned long size = bytes;
         unsigned long allocated_bytes = 0;
         unsigned long sizes_found[MAX_FRAGMENTATION];
@@ -229,14 +235,16 @@ public:
         int elements_quant = 0;
 
         // While doesn't allocated all bytes or the allocation reached too many fragments
-        // and the size still above the minium fragmentation size
-        while (allocated_bytes < bytes && elements_quant < MAX_FRAGMENTATION && size > 8) 
+        while (allocated_bytes < bytes && elements_quant < MAX_FRAGMENTATION && size >= sizeof(Element)) 
         {
-            db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> Searching for " << bytes << " bytes" << endl;
+            db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> Searching for " << size << " bytes contiguous" << endl;
 
             // Tries to find enough space for the current size
             Element * e = search_decrementing(size);
             if(!e) {
+
+                db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> " << size << " bytes not found, decreasing to ";
+
                 // If not find, decrement the contiguous size searched
                 size /= 2;
 
@@ -245,8 +253,7 @@ public:
                     while((size % sizeof(void *)))
                         ++size;
 
-
-                db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> Not found, decreasing size to " << size << " bytes" << endl;
+                db<NicBuffers>(TRC) << size << " bytes" << endl;
 
                 continue;
             }
@@ -259,8 +266,7 @@ public:
             sizes_found[elements_quant] = size;
             elements_quant++;
 
-            db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> " << bytes << " found. Missing " 
-                                << bytes - allocated_bytes << " bytes."  << endl;
+            db<NicBuffers>(TRC) << "NonCBuffer_Allocation >> " << size << " found." << endl;
         }
 
         // If the required bytes was not allocated, free all elements and throw error
@@ -270,11 +276,11 @@ public:
             {
                 Element * e = elements[i];
 
+                unsigned long e_size = sizes_found[i];
+
                 long * e_addr = reinterpret_cast<long *>(e->object() + e->size());
                 
-                e_addr++;
-                
-                free(e_addr);
+                internal_free(e_addr, e_size);
             }
 
             out_of_memory(bytes);
@@ -288,14 +294,10 @@ public:
 
             long * e_addr = reinterpret_cast<long *>(e->object() + e->size());
 
-            *e_addr++ = sizes_found[i];
-            
             map->chunks()[i] = e_addr;
 
             map->chunks_sizes()[i] = sizes_found[i];
         }
-
-        db<NicBuffers>(TRC) << "****************************"  << endl;
 
         return map;
     }
@@ -305,18 +307,14 @@ public:
     void free(void * ptr) {
         AllocationMap * map = reinterpret_cast<AllocationMap *>(ptr);
 
-        db<NicBuffers>(TRC) << "Deallocating map " << ptr << endl;
-
-        map->log_allocation();
+        db<NicBuffers>(TRC) << "NonCBuffer::free(this=" << this << ", Map=" << ptr << ")" << endl;
 
         // Iterates for all chunks allocated in the map
         for (int i = 0; i < map->quant_chunks(); i++) 
         {
-            unsigned long * addr = reinterpret_cast<unsigned long *>(map->chunks()[i]);
+            long * addr = reinterpret_cast<long *>(map->chunks()[i]);
 
-            db<NicBuffers>(TRC) << "Chunk[" << i << "] => " << addr << endl;
-
-            unsigned long bytes = *--addr;
+            unsigned long bytes = map->chunks_sizes()[i];
 
             internal_free(addr, bytes);
         }
@@ -328,7 +326,7 @@ public:
 
 private:
     void internal_free(void * ptr, unsigned long bytes) {
-        db<NicBuffers>(TRC) << "NonCBuffer::free(this=" << this << ",ptr=" << ptr << ",bytes=" << bytes << ")" << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer::internal_free(this=" << this << ",ptr=" << ptr << ",bytes=" << bytes << ")" << endl;
 
         if(ptr && (bytes >= sizeof(Element))) {
             Element * e = new (ptr) Element(reinterpret_cast<char *>(ptr), bytes);

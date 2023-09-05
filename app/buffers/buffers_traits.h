@@ -103,25 +103,36 @@ template<> struct Traits<System>: public Traits<Build>
     static const bool multithread = (Traits<Application>::MAX_THREADS > 1);
     static const bool multiheap = true;
 
+    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
+
     static const unsigned long LIFE_SPAN = 1 * YEAR; // s
     static const unsigned int DUTY_CYCLE = 1000000; // ppm
-
-    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
 
     static const bool reboot = true;
 
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
 
-    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 1500; // 1500 bytes
+    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 3000; // 3000 bytes
     static const unsigned int NON_CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 65536; // 64 Kb
 };
+
+template<> struct Traits<NicBuffers>: public Traits<Build>
+{
+    static const bool error   = true;
+    static const bool warning = true;
+    static const bool info    = true;
+    static const bool trace   = true;
+};
+
 
 template<> struct Traits<Thread>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
     static const bool trace_idle = hysterically_debugged;
     static const bool simulate_capacity = false;
+    static const bool trace = false;
+    static const bool info = false;
 
     typedef RR Criterion;
     static const unsigned int QUANTUM = 10000; // us

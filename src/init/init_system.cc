@@ -40,20 +40,9 @@ public:
         }
 
 
+        // BUG -> Se fizermos primeiro a alocação do contínuo, aparentemente os sizes irão se sobrepor e o grouped_size do CBuffer
+        // vai para um valor super alto, imaginando que tem uma faixa praticamente ilimitada de memória (incluindo o NCBuffer que viria logo depois)
        if(Traits<System>::buffer_enable) {
-            db<Init>(INF) << "Initializing system's Contiguous Buffer: " << endl;
-            System::_Cbuffer_segment = new (&System::_preCbuffer[0]) Segment(C_BUFFER_SIZE, Segment::Flags::SYSD);
-            
-            char * Cbuffer = Address_Space(MMU::current()).attach(System::_Cbuffer_segment);
-            
-            if(!Cbuffer) 
-            {
-                db<Init>(ERR) << "Failed to initialize the system's Contiguous Buffer!" << endl;
-            }
-            System::_Cbuffer = new (&System::_preCbuffer[sizeof(Segment)]) CBuffer(Cbuffer, System::_Cbuffer_segment->size());
-
-
-
             db<Init>(INF) << "Initializing system's Non Contiguous Buffer: " << endl;
             System::_NCbuffer_segment = new (&System::_preNCbuffer[0]) Segment(NC_BUFFER_SIZE, Segment::Flags::SYSD);
             
@@ -66,6 +55,17 @@ public:
 
             unsigned long segment_size = System::_NCbuffer_segment->size();
             System::_NCbuffer = new (&System::_preNCbuffer[sizeof(Segment)]) NonCBuffer(nonCBuffer, segment_size);
+        
+            db<Init>(INF) << "Initializing system's Contiguous Buffer: " << endl;
+            System::_Cbuffer_segment = new (&System::_preCbuffer[0]) Segment(C_BUFFER_SIZE, Segment::Flags::SYSD);
+            
+            char * Cbuffer = Address_Space(MMU::current()).attach(System::_Cbuffer_segment);
+            
+            if(!Cbuffer) 
+            {
+                db<Init>(ERR) << "Failed to initialize the system's Contiguous Buffer!" << endl;
+            }
+            System::_Cbuffer = new (&System::_preCbuffer[sizeof(Segment)]) CBuffer(Cbuffer, System::_Cbuffer_segment->size());
         }  
 
         db<Init>(INF) << "Initializing the machine: " << endl;
