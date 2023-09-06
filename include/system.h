@@ -28,7 +28,9 @@ private:
 class System
 {
     friend class Init_System;                                                   // for _heap and _buffer
-    friend class Init_Application;                                              // for _heap with multiheap = false
+    friend class Init_Application;   
+    template<class>                                           // for _heap with multiheap = false
+    friend class BuffersHandler;                            // for BufferHandler access the Buffers
     friend void CPU::Context::load() const volatile;
     friend void * ::malloc(size_t);						// for _heap
     friend void ::free(void *);							// for _heap
@@ -38,16 +40,7 @@ class System
     friend void ::operator delete[](void *);					// for _heap
 
 public:
-    /* 
-    Código que seria utilizado por novas implementações de Delete
-    Ainda é necessário verificar com o professor
-    static void deleteFromBuffer(void * object) {
-        _buffer->free(object);
-    } */
     static System_Info * const info() { assert(_si); return _si; }
-
-    static CBuffer * Cbuffer() {return _Cbuffer; }
-    static NonCBuffer * NCbuffer() {return _NCbuffer; }
 
 private:
     static void init();
@@ -90,13 +83,13 @@ extern "C"
         __USING_SYS;
 
         if (System::_Cbuffer->contains_pointer(ptr)) {
-            db<MMU>(TRC) << "Pointer=" << ptr << " recognized by CBuffer" << endl;;   
+            db<MMU>(TRC) << "Pointer=" << ptr << " deleted from CBuffer" << endl;;   
 
             return System::_Cbuffer->free(ptr);
         }
 
         if (System::_NCbuffer->contains_pointer(ptr)) {
-            db<MMU>(TRC) << "Pointer=" << ptr << " recognized by NCBuffer" << endl;;   
+            db<MMU>(TRC) << "Pointer=" << ptr << " deleted from NCBuffer" << endl;;   
 
             return System::_NCbuffer->free(ptr);
         }

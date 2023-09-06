@@ -208,7 +208,7 @@ public:
     /// @return (AllocationMap *) -> Pointer to the Map of the allocated memory
     /// @throws out_of_memory if was not found space for allocate for required bytes.
     AllocationMap * alloc(unsigned long bytes) {
-        db<NicBuffers>(TRC) << "NonCBuffer::alloc(bytes= " << bytes << ")" << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer::alloc(bytes= " << bytes << " | available=" << grouped_size() << ")" << endl;
         if(!bytes)
             return 0;
 
