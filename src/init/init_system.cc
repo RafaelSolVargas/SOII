@@ -1,5 +1,6 @@
 // EPOS System Initializer
 
+#include <machine/riscv/sifive_u/sifiveu_nic.h>
 #include <utility/random.h>
 #include <machine.h>
 #include <memory.h>
@@ -55,7 +56,7 @@ public:
 
             unsigned long segment_size = System::_NCbuffer_segment->size();
             System::_NCbuffer = new (&System::_preNCbuffer[sizeof(Segment)]) NonCBuffer(nonCBuffer, segment_size);
-        
+
             db<Init>(INF) << "Initializing system's Contiguous Buffer: " << endl;
             System::_Cbuffer_segment = new (&System::_preCbuffer[0]) Segment(C_BUFFER_SIZE, Segment::Flags::SYSD);
             
@@ -73,6 +74,10 @@ public:
 
         db<Init>(INF) << "Initializing system abstractions: " << endl;
         System::init();
+
+
+        db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
+        System::_nic = new (SYSTEM) SiFiveU_NIC();
 
         // Randomize the Random Numbers Generator's seed
         if(Traits<Random>::enabled) {

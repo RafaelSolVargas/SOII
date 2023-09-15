@@ -31,6 +31,8 @@ char System::_preNCbuffer[];
 Segment * System::_NCbuffer_segment;
 NonCBuffer * System::_NCbuffer;
 
+SiFiveU_NIC * System::_nic;
+
 __END_SYS
 
 // Bindings

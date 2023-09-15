@@ -58,6 +58,8 @@ private:
     static char _preNCbuffer[(Traits<System>::buffer_enable ? sizeof(Segment) : 0)];
     static Segment * _NCbuffer_segment;
     static NonCBuffer * _NCbuffer;
+
+    static SiFiveU_NIC * _nic;
 };
 
 __END_SYS

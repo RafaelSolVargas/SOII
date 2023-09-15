@@ -20,11 +20,11 @@ public:
     using Grouping_List<char>::grouped_size;
 
     CBuffer() {
-        db<Init, NicBuffers>(TRC) << "CBuffer() => " << this << endl;
+        db<NicBuffers>(TRC) << "CBuffer() => " << this << endl;
     }
 
     CBuffer(void * addr, unsigned long bytes) {
-        db<Init, NicBuffers>(TRC) << "CBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
+        db<NicBuffers>(TRC) << "CBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
 
         if(!Traits<CPU>::unaligned_memory_access)
             while((bytes % sizeof(void *)))
@@ -36,7 +36,7 @@ public:
         minimum_address = addr_long;
         maximum_address = addr_long + (bytes / sizeof(long));
 
-        db<Init, NicBuffers>(TRC) << "CBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
+        db<NicBuffers>(TRC) << "CBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
 
         internal_free(addr, bytes);
     }
@@ -130,20 +130,20 @@ public:
 
     void log_allocation() 
     {
-        db<Init, NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
+        db<NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
 
-        db<Init, NicBuffers>(TRC) << "MemAllocationMap(" << this 
+        db<NicBuffers>(TRC) << "MemAllocationMap(" << this 
                                     << ") chunks_quant=" << _quant_chunks
                                     << endl; 
 
         for (int i = 0; i < _quant_chunks; i++) 
         {
-            db<Init, NicBuffers>(TRC) << "Chunk[" << i << "] => " 
+            db<NicBuffers>(TRC) << "Chunk[" << i << "] => " 
                                         << "Address=" << _chunks[i]
                                         << ", Size=" << _chunks_sizes[i]
                                         << endl; 
         }
-        db<Init, NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
+        db<NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
     }
     
 
@@ -171,11 +171,11 @@ public:
     using Grouping_List<char>::grouped_size;
 
     NonCBuffer() {
-        db<Init, NicBuffers>(TRC) << "NonCBuffer() => " << this << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer() => " << this << endl;
     }
 
     NonCBuffer(void * addr, unsigned long bytes) {
-        db<Init, NicBuffers>(TRC) << "NonCBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
 
         if(!Traits<CPU>::unaligned_memory_access)
             while((bytes % sizeof(void *)))
@@ -187,7 +187,7 @@ public:
         minimum_address = addr_long;
         maximum_address = addr_long + (bytes / sizeof(long));
 
-        db<Init, NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
 
         internal_free(addr, bytes);
     }

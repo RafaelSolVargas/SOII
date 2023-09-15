@@ -89,7 +89,10 @@ public:
     typedef IF<Traits<TSTP>::enabled, TSTP_Metadata, Dummy_Metadata>::Result Metadata;
 
     // Buffers used to hold frames across a zero-copy network stack
-    typedef _UTIL::Buffer<NIC<Ethernet>, Frame, void, Metadata> Buffer;
+    //typedef _UTIL::Buffer<NIC<Ethernet>, Frame, void, Metadata> Buffer;
+
+    // Contiguous Buffer
+    typedef _UTIL::CBuffer Buffer;
 
     // Observers of a protocol get a also a pointer to the received buffer
     typedef Data_Observer<Buffer, Protocol> Observer;

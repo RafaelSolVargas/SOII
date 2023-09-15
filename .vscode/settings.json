@@ -2,6 +2,7 @@
     "cSpell.words": [
         "Begl",
         "Cbuffer",
+        "CGEM",
         "GAMECONFIGS",
         "IOTHREAD",
         "KBHANDLER",
@@ -63,7 +64,9 @@
         "numeric": "cpp",
         "random": "cpp",
         "cinttypes": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "ranges": "cpp",
+        "sstream": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled",
 }
