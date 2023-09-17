@@ -45,12 +45,7 @@ public:
 
     ~CBuffer() {
         if (_created_dma) {
-            // Deleting directly the DMA will cause an error of unaligned memory
-            //MMU::free(addr=0x0000000087fab8dc,n=160)
-            // Assertion fail: Traits<CPU>::unaligned_memory_access || !(addr % (Traits<CPU>::WORD_SIZE / 8)), 
-            // function=static void EPOS::S::No_MMU::free(EPOS::S::MMU_Common<0, 0, 0>::Phy_Addr, long unsigned int), 
-            // file=/home/vulcano/UFSC/SOII/include/architecture/mmu.h, line=240
-            // delete _dma;
+            delete _dma;
         }
     }
 
@@ -72,6 +67,10 @@ public:
 
         if(!bytes)
             return 0;
+
+
+        // Increase a long size to be able to store the size 
+        bytes += sizeof(long); 
 
         validate_bytes(bytes);
 
@@ -131,10 +130,13 @@ private:
         // Minimum and maximum address that could be returned by alloc()
         _minimum_address = addr_long;
         _maximum_address = addr_long + (bytes / sizeof(long));
-
-        db<NicBuffers>(TRC) << "CBuffer(Min_Address=" << _minimum_address << ",Max_Address=" << _maximum_address << ")" << endl;
-
+        
         internal_free(addr, bytes);
+
+        db<NicBuffers>(INF) << "CBuffer(Min_Address=" << _minimum_address << 
+                                ",Max_Address=" << _maximum_address << 
+                                ",GroupedSize=" << grouped_size() <<
+                                ")" << endl;
     }
 
     void validate_bytes(unsigned long & bytes) 
@@ -142,9 +144,6 @@ private:
         if(!Traits<CPU>::unaligned_memory_access)
             while((bytes % sizeof(void *)))
                 ++bytes;
-
-        // Always alloc a long size more to be able to alloc the exact size passed in the parameter by the user 
-        bytes += sizeof(long); 
     }
 
     DMA_Buffer * _dma;
@@ -219,7 +218,7 @@ public:
     }
 
     NonCBuffer(void * addr, unsigned long bytes) {
-        db<NicBuffers>(TRC) << "NonCBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
+        db<NicBuffers>(INF) << "NonCBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
 
         if(!Traits<CPU>::unaligned_memory_access)
             while((bytes % sizeof(void *)))
@@ -230,10 +229,13 @@ public:
         // Minimum and maximum address that could be returned by alloc()
         _minimum_address = addr_long;
         _maximum_address = addr_long + (bytes / sizeof(long));
-
-        db<NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << _minimum_address << ",Max_Address=" << _maximum_address << ")" << endl;
-
+        
         internal_free(addr, bytes);
+
+        db<NicBuffers>(INF) << "NonCBuffer(Min_Address=" << _minimum_address << 
+                                         ",Max_Address=" << _maximum_address << 
+                                         ",GroupedSize=" << grouped_size() <<
+                                         ")" << endl;
     }
 
     typedef MemAllocationMap AllocationMap;

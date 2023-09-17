@@ -72,7 +72,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         _rx_ring[i].phy_addr &= ~Rx_Desc::WRAP; // Disable WRAP bit
         _rx_ring[i].ctrl = 0;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_BUFF[" << i << "] => " << _rx_buffers[i] << "(Addr=" << _rx_ring[i].phy_addr << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_BUFF[" << i << "] => " << _rx_buffers[i] << "(Addr=" << _rx_buffers[i]->address() << ")" << endl;
     }
     _rx_ring[RX_BUFS - 1].phy_addr |= Rx_Desc::WRAP; // Set as the last buffer
 
@@ -86,7 +86,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         _tx_ring[i].ctrl |= Tx_Desc::USED; // Write 1, if 0 the DMA will start
         _tx_ring[i].ctrl &= ~Tx_Desc::LAST; // Set as not the last buffer
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << _tx_ring[i].phy_addr << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << _tx_buffers[i]->address() << ")" << endl;
     }
     _tx_ring[TX_BUFS - 1].ctrl |= Tx_Desc::LAST; // Set as the last buffer
 

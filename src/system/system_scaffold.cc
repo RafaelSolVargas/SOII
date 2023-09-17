@@ -23,14 +23,8 @@ char System::_preheap[];
 Segment * System::_heap_segment;
 Heap * System::_heap;
 
-char System::_preCbuffer[];
-Segment * System::_Cbuffer_segment;
 CBuffer * System::_Cbuffer;
-
-char System::_preNCbuffer[];
-Segment * System::_NCbuffer_segment;
 NonCBuffer * System::_NCbuffer;
-
 SiFiveU_NIC * System::_nic;
 
 __END_SYS

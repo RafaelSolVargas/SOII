@@ -189,7 +189,7 @@ private:
     static const unsigned int UNITS = Traits<SiFiveU_NIC>::UNITS;
     static const unsigned int TX_BUFS = Traits<SiFiveU_NIC>::SEND_BUFFERS;
     static const unsigned int RX_BUFS = Traits<SiFiveU_NIC>::RECEIVE_BUFFERS;
-    static const unsigned int BUFF_SIZE = sizeof(Ethernet::Frame);
+    static const unsigned int BUFF_SIZE = sizeof(Ethernet::Frame) + sizeof(long);
 
 
     // Size of the DMA Buffer that will host the only ring buffers

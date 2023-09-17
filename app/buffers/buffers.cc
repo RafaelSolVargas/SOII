@@ -162,5 +162,7 @@ int main()
     cout << ">>>>>>>>>>>>>>> Testing Data Copy" << endl;
     test_copying();
 
+    cout << ">>>>>>>>>>>>>>> Tests finished" << endl;
+
     return 0;
 }

@@ -51,12 +51,7 @@ private:
     static Segment * _heap_segment;
     static Heap * _heap;
 
-    static char _preCbuffer[(Traits<System>::buffer_enable ? sizeof(Segment) : 0)];
-    static Segment * _Cbuffer_segment;
     static CBuffer * _Cbuffer;
-
-    static char _preNCbuffer[(Traits<System>::buffer_enable ? sizeof(Segment) : 0)];
-    static Segment * _NCbuffer_segment;
     static NonCBuffer * _NCbuffer;
 
     static SiFiveU_NIC * _nic;
