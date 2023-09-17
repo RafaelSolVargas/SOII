@@ -237,6 +237,7 @@ private:
 
     void configure();
     void configure_mac();
+    void receive();
 
 private:
     Configuration _configuration;

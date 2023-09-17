@@ -68,9 +68,52 @@ int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * d
     return size;
 }
 
-int SiFiveU_NIC::send(Buffer * buf) 
+int SiFiveU_NIC::send(Buffer * buffer) 
 {
     return 1;
+}
+
+void SiFiveU_NIC::receive() 
+{
+    db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::receive()" << endl;
+
+    for (unsigned int count = RX_BUFS, i = _rx_cur;
+        count && ((_rx_ring[i].phy_addr & Rx_Desc::OWNER) != 0);
+        count--, ++i %= RX_BUFS, _rx_cur = i)
+    {
+        // Search if a frame arrived is the rx_buffers
+        if (_rx_buffers[i]->lock())
+        { 
+            Buffer *buffer = _rx_buffers[i];
+            Rx_Desc *descriptor = &_rx_ring[i];
+
+            // The frame will always be stored in CBuffer address + sizeof(long)
+            unsigned long buffer_addr = reinterpret_cast<unsigned long>(buffer->address());
+
+            Frame *frame = reinterpret_cast<Frame*>(buffer_addr + sizeof(long));
+
+            // Update the descriptor
+            descriptor->phy_addr &= ~Rx_Desc::OWNER; // Owned by NIC
+
+            // For the upper layers, size will represent the size of frame->data<T>()
+            // buffer->size((descriptor->ctrl & Rx_Desc::SIZE_MASK) - sizeof(Header));
+
+            db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::receive: frame = " << *frame << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::handle_int: descriptor[" << i
+                                << "] = " << descriptor << " => " << *descriptor << endl;
+
+            if ((Traits<SiFiveU_NIC>::EXPECTED_SIMULATION_TIME > 0) && (frame->header()->src() == _configuration.address))
+            { 
+                free(buffer);
+
+                continue;
+            }
+
+            // There was no observer to this protocol and Data
+            if (!notify(frame->header()->prot(), buffer)) 
+                free(buffer);
+        }
+    }
 }
 
 int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size) 
