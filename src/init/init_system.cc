@@ -56,17 +56,13 @@ public:
 
             unsigned long segment_size = System::_NCbuffer_segment->size();
             System::_NCbuffer = new (&System::_preNCbuffer[sizeof(Segment)]) NonCBuffer(nonCBuffer, segment_size);
-
+        
+        
             db<Init>(INF) << "Initializing system's Contiguous Buffer: " << endl;
             System::_Cbuffer_segment = new (&System::_preCbuffer[0]) Segment(C_BUFFER_SIZE, Segment::Flags::SYSD);
             
-            char * Cbuffer = Address_Space(MMU::current()).attach(System::_Cbuffer_segment);
-            
-            if(!Cbuffer) 
-            {
-                db<Init>(ERR) << "Failed to initialize the system's Contiguous Buffer!" << endl;
-            }
-            System::_Cbuffer = new (&System::_preCbuffer[sizeof(Segment)]) CBuffer(Cbuffer, System::_Cbuffer_segment->size());
+            // Uses the constructor that will get the contiguous address to work with the DMA_Buffer
+            System::_Cbuffer = new (&System::_preCbuffer[sizeof(Segment)]) CBuffer(System::_Cbuffer_segment->size());
         }  
 
         db<Init>(INF) << "Initializing the machine: " << endl;
@@ -74,7 +70,6 @@ public:
 
         db<Init>(INF) << "Initializing system abstractions: " << endl;
         System::init();
-
 
         db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
         System::_nic = new (SYSTEM) SiFiveU_NIC();

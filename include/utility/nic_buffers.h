@@ -14,31 +14,44 @@ __BEGIN_UTIL
 class CBuffer: private Grouping_List<char>
 {
 protected:
+    typedef MMU::DMA_Buffer DMA_Buffer;
+    typedef CPU::Phy_Addr Phy_Addr;
+
 public:
     using Grouping_List<char>::empty;
     using Grouping_List<char>::size;
     using Grouping_List<char>::grouped_size;
 
-    CBuffer() {
+
+    CBuffer() : _created_dma(false) {
         db<NicBuffers>(TRC) << "CBuffer() => " << this << endl;
     }
 
-    CBuffer(void * addr, unsigned long bytes) {
-        db<NicBuffers>(TRC) << "CBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
+    CBuffer(unsigned long bytes) : _created_dma(true) {
+        validate_bytes(bytes);
 
-        if(!Traits<CPU>::unaligned_memory_access)
-            while((bytes % sizeof(void *)))
-                ++bytes;
+        _dma = new (SYSTEM) DMA_Buffer(bytes);
 
-        long * addr_long = reinterpret_cast<long *>(addr);
+        _phy_addr = _dma->phy_address();
 
-        // Minimum and maximum address that could be returned by alloc()
-        minimum_address = addr_long;
-        maximum_address = addr_long + (bytes / sizeof(long));
+        constructor_prologue(_phy_addr, bytes);
+    }
 
-        db<NicBuffers>(TRC) << "CBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
+    CBuffer(void * addr, unsigned long bytes) : _phy_addr(addr), _created_dma(false) {
+        validate_bytes(bytes);
 
-        internal_free(addr, bytes);
+        constructor_prologue(addr, bytes);
+    }
+
+    ~CBuffer() {
+        if (_created_dma) {
+            // Deleting directly the DMA will cause an error of unaligned memory
+            //MMU::free(addr=0x0000000087fab8dc,n=160)
+            // Assertion fail: Traits<CPU>::unaligned_memory_access || !(addr % (Traits<CPU>::WORD_SIZE / 8)), 
+            // function=static void EPOS::S::No_MMU::free(EPOS::S::MMU_Common<0, 0, 0>::Phy_Addr, long unsigned int), 
+            // file=/home/vulcano/UFSC/SOII/include/architecture/mmu.h, line=240
+            // delete _dma;
+        }
     }
 
     /// @brief Defines if a address is between the range of the addresses that belongs to this Buffer
@@ -47,7 +60,7 @@ public:
     bool contains_pointer(void * ptr) {
         long * addr = reinterpret_cast<long *>(ptr);
    
-        return addr >= minimum_address && addr < maximum_address;
+        return addr >= _minimum_address && addr < _maximum_address;
     }
 
     /// @brief Allocate bytes contiguous size of memory in the Buffer, returning the address that was allocated
@@ -60,11 +73,8 @@ public:
         if(!bytes)
             return 0;
 
-        if(!Traits<CPU>::unaligned_memory_access)
-            while((bytes % sizeof(void *)))
-                ++bytes;
+        validate_bytes(bytes);
 
-        bytes += sizeof(long);        // add room for size
         if(bytes < sizeof(Element))
             bytes = sizeof(Element);
 
@@ -93,6 +103,9 @@ public:
         internal_free(addr, bytes);
     }
 
+    void * address() {
+        return _phy_addr;
+    }
 
 private:
     void internal_free(void * ptr, unsigned long bytes) {
@@ -105,8 +118,40 @@ private:
         }
     }
 
-    static long * minimum_address;
-    static long * maximum_address;
+    void constructor_prologue(void * addr, unsigned long bytes) 
+    {
+        db<NicBuffers>(TRC) << "CBuffer(addr=" << addr << ",bytes=" << bytes << ") => " << this << endl;
+
+        if(!Traits<CPU>::unaligned_memory_access)
+            while((bytes % sizeof(void *)))
+                ++bytes;
+
+        long * addr_long = reinterpret_cast<long *>(addr);
+
+        // Minimum and maximum address that could be returned by alloc()
+        _minimum_address = addr_long;
+        _maximum_address = addr_long + (bytes / sizeof(long));
+
+        db<NicBuffers>(TRC) << "CBuffer(Min_Address=" << _minimum_address << ",Max_Address=" << _maximum_address << ")" << endl;
+
+        internal_free(addr, bytes);
+    }
+
+    void validate_bytes(unsigned long & bytes) 
+    {
+        if(!Traits<CPU>::unaligned_memory_access)
+            while((bytes % sizeof(void *)))
+                ++bytes;
+
+        // Always alloc a long size more to be able to alloc the exact size passed in the parameter by the user 
+        bytes += sizeof(long); 
+    }
+
+    DMA_Buffer * _dma;
+    Phy_Addr _phy_addr;
+    bool _created_dma;
+    long * _minimum_address;
+    long * _maximum_address;
 
     void out_of_memory(unsigned long bytes);
 };
@@ -145,7 +190,6 @@ public:
         }
         db<NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
     }
-    
 
     unsigned long original_size() { return _original_size; }
     unsigned long total_size() { return _total_size; }
@@ -184,10 +228,10 @@ public:
         long * addr_long = reinterpret_cast<long *>(addr);
 
         // Minimum and maximum address that could be returned by alloc()
-        minimum_address = addr_long;
-        maximum_address = addr_long + (bytes / sizeof(long));
+        _minimum_address = addr_long;
+        _maximum_address = addr_long + (bytes / sizeof(long));
 
-        db<NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << minimum_address << ",Max_Address=" << maximum_address << ")" << endl;
+        db<NicBuffers>(TRC) << "NonCBuffer(Min_Address=" << _minimum_address << ",Max_Address=" << _maximum_address << ")" << endl;
 
         internal_free(addr, bytes);
     }
@@ -200,7 +244,7 @@ public:
     bool contains_pointer(void * ptr) {
         long * addr = reinterpret_cast<long *>(ptr);
    
-        return addr >= minimum_address && addr < maximum_address;
+        return addr >= _minimum_address && addr < _maximum_address;
     }
 
     /// @brief Allocate bytes, that could be non contiguous, memory in the Buffer
@@ -335,8 +379,8 @@ private:
         }
     }
 
-    static long * minimum_address;
-    static long * maximum_address;
+    long * _minimum_address;
+    long * _maximum_address;
     static const int MAX_FRAGMENTATION = 50;
 
     void out_of_memory(unsigned long bytes);

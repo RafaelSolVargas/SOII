@@ -244,9 +244,6 @@ private:
     Buffer * _rx_buffers[RX_BUFS];
     Buffer * _tx_buffers[TX_BUFS];
 
-    DMA_Buffer* _dma_rx_buffers[RX_BUFS];    
-    DMA_Buffer* _dma_tx_buffers[TX_BUFS];    
-
     static Device _devices[UNITS];
 };
 

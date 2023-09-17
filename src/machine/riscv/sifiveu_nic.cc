@@ -39,6 +39,9 @@ SiFiveU_NIC::SiFiveU_NIC()
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::rx_ring_addr::address => " << rx_ring_addr << endl;
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::tx_ring_addr::address => " << tx_ring_addr << endl;
 
+    // Inicializa os Rx Descriptors
+    _rx_cur = 0;
+    _rx_ring_phy = _rings_buffer->phy_address();
     _rx_ring = reinterpret_cast<Rx_Desc *>(rx_ring_addr);
     for (unsigned int i = 0; i < RX_BUFS; i++) 
     {
@@ -47,6 +50,9 @@ SiFiveU_NIC::SiFiveU_NIC()
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << &_rx_ring[i] << endl;
     }
 
+    // Inicializa os Tx Descriptors
+    _tx_cur = 0;
+    _tx_ring_phy = _rings_buffer->phy_address() + RX_DESC_BUFFER_SIZE;
     _tx_ring = reinterpret_cast<Tx_Desc *>(tx_ring_addr);
     for (unsigned int i = 0; i < TX_BUFS; i++) 
     {
@@ -58,65 +64,29 @@ SiFiveU_NIC::SiFiveU_NIC()
     // Create the RX Ring Buffers 
     for (unsigned int i = 0; i < RX_BUFS; i++) 
     {
-        // Cria um DMA_Buffer para que ele aloque memória contínua
-        DMA_Buffer * dma = new (SYSTEM) DMA_Buffer(BUFF_SIZE);
+        // A classe CBuffer já utiliza diretamente a classe DMA_Buffer para alocações contíguas 
+        _rx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
-        // Cria um Segment com o endereço já alocado pelo DMA_Buffer, para conseguir fazer o AS attach
-        // Segment * segment = new (SYSTEM) Segment(dma->phy_address(), BUFF_SIZE, Segment::Flags::DMA);
-
-        // Faz o bind entre o DMA e o AS
-        // TODO -> Verificar se eu deveria estar usando um Log_Addr dentro de uma NIC
-        // Log_Addr dma_address = Address_Space(MMU::current()).attach(segment);
-
-        // Salva referências para apagar posteriormente
-        _dma_rx_buffers[i] = dma;
-
-        // Cria o buffer contínuo passando o endereço definido pela MMU, deve ser o físico
-        _rx_buffers[i] = new (SYSTEM) Buffer(dma->phy_address(), BUFF_SIZE);
-
-        _rx_ring[i].phy_addr = dma->phy_address(); // Verify how to keep bits [1-0]
+        _rx_ring[i].phy_addr = Phy_Addr(_rx_buffers[i]->address()); // Verify how to keep bits [1-0] 
         _rx_ring[i].phy_addr &= ~Rx_Desc::OWNER; // Disable OWNER bit
         _rx_ring[i].phy_addr &= ~Rx_Desc::WRAP; // Disable WRAP bit
         _rx_ring[i].ctrl = 0;
 
-        // Deleta o segmento, aparentemente não tem problema
-        // delete segment;
-
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_BUFF[" << i << "] => " << _rx_buffers[i] << "(Addr=" << dma->phy_address() << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_BUFF[" << i << "] => " << _rx_buffers[i] << "(Addr=" << _rx_ring[i].phy_addr << ")" << endl;
     }
     _rx_ring[RX_BUFS - 1].phy_addr |= Rx_Desc::WRAP; // Set as the last buffer
 
     // Create the TX Ring Buffers 
     for (unsigned int i = 0; i < TX_BUFS; i++) 
     {
-        // Cria um DMA_Buffer para que ele aloque memória contínua
-        DMA_Buffer * dma = new (SYSTEM) DMA_Buffer(BUFF_SIZE);
+        // A classe CBuffer já utiliza diretamente a classe DMA_Buffer para alocações contíguas 
+        _tx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
-        // Cria um Segment com o endereço já alocado pelo DMA_Buffer, para conseguir fazer o AS attach
-        //Segment * segment = new (SYSTEM) Segment(dma->phy_address(), BUFF_SIZE, Segment::Flags::DMA);
-
-        // Faz o bind entre o DMA e o AS
-        //char * dma_address = Address_Space(MMU::current()).attach(segment);
-
-        // Salva referências para apagar posteriormente
-        _dma_tx_buffers[i] = dma;
-
-        // Cria o buffer contínuo passando o endereço definido pela MMU, deve ser o físico
-        _tx_buffers[i] = new (SYSTEM) Buffer(dma->phy_address(), BUFF_SIZE);
-
-        _tx_ring[i].phy_addr = dma->phy_address();
+        _tx_ring[i].phy_addr = Phy_Addr(_tx_buffers[i]->address()); // Verify how to keep bits [1-0] 
         _tx_ring[i].ctrl |= Tx_Desc::USED; // Write 1, if 0 the DMA will start
         _tx_ring[i].ctrl &= ~Tx_Desc::LAST; // Set as not the last buffer
 
-        if (i == TX_BUFS - 1) 
-        {
-            _tx_ring[i].ctrl |= Tx_Desc::LAST; // Set as the last buffer
-        }
-
-        // Deleta o segmento, aparentemente não tem problema
-        //delete segment;
-
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << dma->phy_address() << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << _tx_ring[i].phy_addr << ")" << endl;
     }
     _tx_ring[TX_BUFS - 1].ctrl |= Tx_Desc::LAST; // Set as the last buffer
 
@@ -128,12 +98,10 @@ SiFiveU_NIC::~SiFiveU_NIC() {
 
     for (unsigned int i = 0; i < RX_BUFS; i++) {
         delete _rx_buffers[i];
-        delete _dma_rx_buffers[i];
     }
 
     for (unsigned int i = 0; i < TX_BUFS; i++) {
         delete _tx_buffers[i];
-        delete _dma_tx_buffers[i];
     }
 }
 
@@ -202,23 +170,22 @@ void SiFiveU_NIC::configure()
     GEM::print_register(R_IMR);
 }
 
+SiFiveU_NIC::Buffer * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) 
+{
+    return _rx_buffers[0];
+}
 
 int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * data, unsigned int size) 
 {
     return 1;
 }
 
-int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size) 
+int SiFiveU_NIC::send(Buffer * buf) 
 {
     return 1;
 }
 
-SiFiveU_NIC::Buffer * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) 
-{
-    return _rx_buffers[0];
-}
-
-int SiFiveU_NIC::send(Buffer * buf) 
+int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size) 
 {
     return 1;
 }
@@ -242,7 +209,7 @@ const SiFiveU_NIC::Address & SiFiveU_NIC::address()
 
 void SiFiveU_NIC::address(const Address &) 
 {
-    
+
 }
 
 // pass null to reset
