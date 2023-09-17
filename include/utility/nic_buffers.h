@@ -22,12 +22,11 @@ public:
     using Grouping_List<char>::size;
     using Grouping_List<char>::grouped_size;
 
-
-    CBuffer() : _created_dma(false) {
+    CBuffer() : _locked(false), _created_dma(false) {
         db<NicBuffers>(TRC) << "CBuffer() => " << this << endl;
     }
 
-    CBuffer(unsigned long bytes) : _created_dma(true) {
+    CBuffer(unsigned long bytes) : _locked(false), _created_dma(true) {
         validate_bytes(bytes);
 
         _dma = new (SYSTEM) DMA_Buffer(bytes);
@@ -37,7 +36,7 @@ public:
         constructor_prologue(_phy_addr, bytes);
     }
 
-    CBuffer(void * addr, unsigned long bytes) : _phy_addr(addr), _created_dma(false) {
+    CBuffer(void * addr, unsigned long bytes) : _locked(false), _phy_addr(addr), _created_dma(false) {
         validate_bytes(bytes);
 
         constructor_prologue(addr, bytes);
@@ -47,6 +46,16 @@ public:
         if (_created_dma) {
             delete _dma;
         }
+    }
+
+    bool lock() 
+    { 
+        return !CPU::tsl(_locked);
+    }
+    
+    void unlock() 
+    { 
+        _locked = 0;
     }
 
     /// @brief Defines if a address is between the range of the addresses that belongs to this Buffer
@@ -106,6 +115,11 @@ public:
         return _phy_addr;
     }
 
+    friend Debug & operator<<(Debug & db, const CBuffer & b) {
+        db << "{gsize=" << b.grouped_size() << ",lk=" << b._locked << ",addr=" << b._phy_addr << "}";
+        return db;
+    }
+
 private:
     void internal_free(void * ptr, unsigned long bytes) {
         db<NicBuffers>(TRC) << "CBuffer::free(this=" << this << ",ptr=" << ptr << ",bytes=" << bytes << ")" << endl;
@@ -146,6 +160,7 @@ private:
                 ++bytes;
     }
 
+    volatile bool _locked;
     DMA_Buffer * _dma;
     Phy_Addr _phy_addr;
     bool _created_dma;

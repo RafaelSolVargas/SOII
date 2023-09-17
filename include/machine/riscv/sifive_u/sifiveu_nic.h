@@ -31,11 +31,12 @@ public:
     #define R_NW_CTRL_B_CLR_STATS_REGS (1 << 5)
     #define R_NW_CTRL_B_TX_EN (1 << 3)   /*< Transmit enable */
     #define R_NW_CTRL_B_RX_EN (1 << 2)   /*< Receive enable */
+    #define R_NW_CTRL_B_TX_START (1 << 9) /*< Transmit start */
 
     /* Network Config Register */
     #define R_NW_CFG 0x0004
     #define R_NW_CFG_B_FULL_DUPLEX (1 << 1)
-    #define R_NW_CFG_B_REMOVE_FCS (1 << 17)
+    #define R_NW_CFG_B_FCS (1 << 17)
     #define R_NW_CFG_B_PROMISC (1 << 4)
 
     #define R_NET_STATS 0x0008
@@ -75,6 +76,11 @@ public:
             SIZE_MASK = 0x3fff
         };
 
+        // Aplica máscara e altera o valor de size do descriptor
+        void update_size(unsigned int size) {
+            ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
+        }
+
         friend Debug &operator<<(Debug &db, const Rx_Desc &d) 
         {
             db << "{" << hex << d.phy_addr << dec << ","
@@ -86,12 +92,17 @@ public:
     // Transmit Descriptor
     struct Tx_Desc: public Desc {
         enum {
-            USED = 31,
+            OWNER = 31,
             LAST = 15,
             SIZE_MASK = 0x1fff
             // 14 is reserved
             // 13-1 is for length of buffer
         };
+
+        // Aplica máscara e altera o valor de size do descriptor
+        void update_size(unsigned int size) {
+            ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
+        }
 
         friend Debug &operator<<(Debug &db, const Tx_Desc &d) 
         {
@@ -119,12 +130,6 @@ public:
         Reg32* addr = reinterpret_cast<Reg32*>(ETH_BASE + offset);
         *addr = *addr | mask;
     }
-    
-    /* void set_value(int offset, int value) {
-        Reg32 * pointer = reinterpret_cast<Reg32 *>(ETH_BASE + offset);
-        
-        *pointer = value;
-    } */
 
     static bool read_bit(int registerOffset, int bitIndex) {
         Reg32 regValue = *reg(registerOffset);
@@ -136,6 +141,19 @@ public:
         Reg32 result = (regValue & mask) >> bitIndex;
 
         return result != 0;
+    }
+
+    static void print_register(int registerOffset) 
+    {
+        db<SiFiveU_NIC>(INF) << "Register Offset(" << registerOffset << ") = ";
+        for (int x = 31; x >= 0; x--) 
+        {
+            bool bitValue = GEM::read_bit(registerOffset, x);
+
+            db<SiFiveU_NIC>(INF) << bitValue;
+        }
+
+        db<SiFiveU_NIC>(INF) << endl;
     }
 
     /* static void write_bit_range(int registerOffset, int firstBit, int quant, bool bitValue) 
@@ -163,18 +181,11 @@ public:
         write_value(registerOffset, regValue);
     } */
 
-    static void print_register(int registerOffset) 
-    {
-        db<SiFiveU_NIC>(INF) << "Register Offset(" << registerOffset << ") = ";
-        for (int x = 31; x >= 0; x--) 
-        {
-            bool bitValue = GEM::read_bit(registerOffset, x);
-
-            db<SiFiveU_NIC>(INF) << bitValue;
-        }
-
-        db<SiFiveU_NIC>(INF) << endl;
-    }
+    /* void set_value(int offset, int value) {
+        Reg32 * pointer = reinterpret_cast<Reg32 *>(ETH_BASE + offset);
+        
+        *pointer = value;
+    } */
 };
 
 
@@ -225,6 +236,7 @@ private:
     };
 
     void configure();
+    void configure_mac();
 
 private:
     Configuration _configuration;
