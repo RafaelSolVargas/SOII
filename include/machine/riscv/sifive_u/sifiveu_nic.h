@@ -202,31 +202,89 @@ private:
     static const unsigned int RX_BUFS = Traits<SiFiveU_NIC>::RECEIVE_BUFFERS;
     static const unsigned int BUFF_SIZE = sizeof(Ethernet::Frame) + sizeof(long);
 
-
     // Size of the DMA Buffer that will host the only ring buffers
     static const unsigned int RX_DESC_BUFFER_SIZE = RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U); 
     static const unsigned int TX_DESC_BUFFER_SIZE = TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U); 
     static const unsigned int DESC_BUFFER_SIZE = RX_DESC_BUFFER_SIZE + TX_DESC_BUFFER_SIZE;
 
 public:
+    class AllocBufferInfo 
+    {
+    public:
+        typedef Simple_List<AllocBufferInfo> List;
+        typedef typename List::Element Element;
+        typedef SiFiveU_NIC::Buffer Buffer;
+
+        AllocBufferInfo(Buffer * buffer, unsigned int index, unsigned long size) : _buffer(buffer), _index(index), 
+            _size(size),  _link1(this), _link2(this) { }
+
+        SiFiveU_NIC::Buffer * buffer() { return _buffer; }
+        unsigned int index() { return _index; }
+        unsigned long size() { return _size; }
+        Element * link1() { return &_link1; }
+        Element * link() { return link1(); }
+        Element * lint() { return link1(); }
+        Element * link2() { return &_link2; }
+        Element * lext() { return link2(); } 
+
+    private: 
+        Buffer * _buffer;
+        unsigned int _index;
+        unsigned long _size;
+        Element _link1;
+        Element _link2;
+    };
+
     SiFiveU_NIC();
     ~SiFiveU_NIC();
 
+    /// @brief Allocate a Buffer and immediately triggers the send to the GEM
+    /// @param dst The destination MAC address
+    /// @param prot The protocol being used
+    /// @param data The data to be passed
+    /// @param size The size of the data
     int send(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
+    
+    /// @brief 
+    /// @param src 
+    /// @param prot 
+    /// @param data 
+    /// @param size 
     int receive(Address * src, Protocol * prot, void * data, unsigned int size);
 
-    Buffer * alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload);
-    int send(Buffer * buf);
-    bool drop(Buffer * buf); // after send, while still in the working queues, not supported by many NICs
-    void free(Buffer * buf); // to be called by observers after handling notifications from the NIC
+    /// @brief Allocate one or more Buffers in a Simple_List<AllocBufferInfo> to allow the user to copy his data
+    /// into the buffers, the list returned will be passed to the send(AllocBufferInfo*) afterwards 
+    /// @param dst The destination MAC address
+    /// @param prot The protocol being used to send the data
+    /// @param payload The size of data that need to be passed
+    AllocBufferInfo * alloc(const Address & dst, const Protocol & prot, unsigned int payload);
 
-    const Address & address();
-    void address(const Address &);
+    /// @brief Receive a AllocBufferInfo * that could be a list of pre allocated Buffers and execute the sending of them
+    /// @param allocated_buffer The returned AllocBufferInfo * from the AllocBufferInfo * alloc() method
+    int send(AllocBufferInfo * allocated_buffer);
+    
+    /// @brief 
+    /// @param buf 
+    bool drop(AllocBufferInfo * buf);
+    
+    /// @brief 
+    /// @param buf 
+    void free(AllocBufferInfo * buf);
 
     bool reconfigure(const Configuration * c = 0); // pass null to reset
-    const Configuration & configuration();
+    void address(const Address &);
+    const Address & address() { return _address; }
+    const Configuration & configuration() { return _configuration; }
+    const Statistics & statistics() { return _statistics; }
 
-    const Statistics & statistics();
+    /// @brief DO NOT USE THIS METHOD
+    Buffer * alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) { return _rx_buffers[0]; }
+    /// @brief DO NOT USE THIS METHOD
+    int send(Buffer * buf) { return 1; }
+    /// @brief DO NOT USE THIS METHOD
+    bool drop(Buffer * buf) { return true; } // after send, while still in the working queues, not supported by many NICs
+    /// @brief DO NOT USE THIS METHOD
+    void free(Buffer * buf) { } // to be called by observers after handling notifications from the NIC
 
 private:
     // Interrupt dispatching binding

@@ -95,7 +95,7 @@ public:
     typedef _UTIL::CBuffer Buffer;
 
     // Observers of a protocol get a also a pointer to the received buffer
-    typedef Data_Observer<Buffer, Protocol> Observer;
+    typedef Data_Observing<Buffer, Protocol> Observer;
     typedef Data_Observed<Buffer, Protocol> Observed;
 
     // Ethernet NICs usually don't export the timer for SFD time stamping, so the basic time type is set to TSC

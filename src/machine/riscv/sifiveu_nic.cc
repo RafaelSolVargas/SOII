@@ -9,9 +9,99 @@ extern "C" { void _panic(); }
 
 __BEGIN_SYS
 
-SiFiveU_NIC::Buffer * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) 
+SiFiveU_NIC::AllocBufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int payload) 
 {
-    return _rx_buffers[0];
+    db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::alloc(s=" << _configuration.address
+                            << ",d=" << dst << ",p=" << hex << prot << dec
+                            << ",pl=" << payload << ")" << endl;
+
+    if (payload / MTU > TX_BUFS)
+    {
+        db<SiFiveU_NIC>(WRN) << "SiFiveU_NIC::alloc: sizeof(Network::Packet::Data) > ""sizeof(NIC::Frame::Data) * TX_BUFS!" << endl;
+        
+        return 0;
+    }
+
+    // Create the list of AllocatedBuffers to return them
+    SiFiveU_NIC::AllocBufferInfo::List buffers;
+
+    // Calculate how many frames are needed to hold the transport PDU and allocate enough buffers
+    for (unsigned int size = payload; size > 0; size -= MTU)
+    {
+        // Busy waiting até conseguir pegar o próximo buffer para fazer o envio 
+        unsigned int i = _tx_cur;
+        for (bool locked = false; !locked;)
+        {
+            for (; _tx_ring[i].ctrl & Tx_Desc::OWNER; ++i %= TX_BUFS);
+
+            locked = _tx_buffers[i]->lock();
+        }
+
+        // Update the tx_current
+        _tx_cur = (i + 1) % TX_BUFS;
+        
+        Tx_Desc* descriptor = &_tx_ring[i];
+        Buffer* buffer = _tx_buffers[i];
+        
+        // Armazena a maior quantidade possível que caiba num Frame, a MTU, caso sobre será alocado no próximo buffer
+        unsigned long size_sended = (size > MTU) ? MTU : size;
+
+        // Inicializa o Frame, não faz a cópia dos dados pois não tem dado 
+        new (buffer->alloc(size_sended)) Frame(_configuration.address, dst, prot);
+
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::alloc:descriptor[" << i << "]=" << descriptor << " => " << *descriptor << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::alloc:buf=" << buffer << " => " << *buffer << endl;
+
+        // Pass the information of this buffer to the allocatedBuffer and store in the list
+        AllocBufferInfo * buffer_info = new (SYSTEM) AllocBufferInfo(buffer, i, size_sended);
+
+        buffers.insert(buffer_info->link());
+    }
+
+    return buffers.head()->object();
+}
+
+int SiFiveU_NIC::send(SiFiveU_NIC::AllocBufferInfo * buffer_info) 
+{
+    unsigned int size = 0;
+
+    for (AllocBufferInfo::Element *el = buffer_info->link(); el; el = el->next())
+    {
+        buffer_info = el->object();
+        unsigned long buff_size = buffer_info->size();
+        unsigned int index = buffer_info->index();
+
+        Buffer* buffer = buffer_info->buffer();
+        Tx_Desc descriptor = _tx_ring[index];
+
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:AllocBuffer=" << buffer_info << " => (" 
+                             << "buff=" << buffer << ",index=" << index << ",size=" << buff_size
+                             << ")" << endl;
+
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:buf=" << buffer << " => " << *buffer << endl;
+
+        // Atualiza o descritor
+        descriptor.update_size(buff_size + sizeof(Header));
+        descriptor.ctrl &= ~Tx_Desc::OWNER;
+
+        // Começa o DMA
+        GEM::apply_or_mask(R_NW_CTRL, R_NW_CTRL_B_TX_START);
+
+        size += buff_size;
+
+        _statistics.tx_packets++;
+        _statistics.tx_bytes += buff_size;
+
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:descriptor=" << descriptor << endl;
+
+        // Deleta o AllocBufferInfo
+        delete buffer_info;
+
+        // Espera o DMA terminar, o unlock do buffer será chamado pelo handle_int
+        while (!(descriptor.ctrl & Tx_Desc::OWNER));
+    }
+
+    return size;
 }
 
 int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * data, unsigned int size) 
@@ -68,74 +158,9 @@ int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * d
     return size;
 }
 
-int SiFiveU_NIC::send(Buffer * buffer) 
-{
-    return 1;
-}
-
-void SiFiveU_NIC::receive() 
-{
-    db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::receive()" << endl;
-
-    for (unsigned int count = RX_BUFS, i = _rx_cur;
-        count && ((_rx_ring[i].phy_addr & Rx_Desc::OWNER) != 0);
-        count--, ++i %= RX_BUFS, _rx_cur = i)
-    {
-        // Search if a frame arrived is the rx_buffers
-        if (_rx_buffers[i]->lock())
-        { 
-            Buffer *buffer = _rx_buffers[i];
-            Rx_Desc *descriptor = &_rx_ring[i];
-
-            // The frame will always be stored in CBuffer address + sizeof(long)
-            unsigned long buffer_addr = reinterpret_cast<unsigned long>(buffer->address());
-
-            Frame *frame = reinterpret_cast<Frame*>(buffer_addr + sizeof(long));
-
-            // Update the descriptor
-            descriptor->phy_addr &= ~Rx_Desc::OWNER; // Owned by NIC
-
-            // For the upper layers, size will represent the size of frame->data<T>()
-            // buffer->size((descriptor->ctrl & Rx_Desc::SIZE_MASK) - sizeof(Header));
-
-            db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::receive: frame = " << *frame << endl;
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::handle_int: descriptor[" << i
-                                << "] = " << descriptor << " => " << *descriptor << endl;
-
-            if ((Traits<SiFiveU_NIC>::EXPECTED_SIMULATION_TIME > 0) && (frame->header()->src() == _configuration.address))
-            { 
-                free(buffer);
-
-                continue;
-            }
-
-            // There was no observer to this protocol and Data
-            if (!notify(frame->header()->prot(), buffer)) 
-                free(buffer);
-        }
-    }
-}
-
 int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size) 
 {
     return 1;
-}
-
-// after send, while still in the working queues, not supported by many NICs
-bool SiFiveU_NIC::drop(Buffer * buf) 
-{ 
-    return false; 
-} 
-
-// to be called by observers after handling notifications from the NIC
-void SiFiveU_NIC::free(Buffer * buf) 
-{
-
-}
-
-const SiFiveU_NIC::Address & SiFiveU_NIC::address() 
-{
-    return _address;
 }
 
 void SiFiveU_NIC::address(const Address &) 
@@ -143,20 +168,9 @@ void SiFiveU_NIC::address(const Address &)
 
 }
 
-// pass null to reset
 bool SiFiveU_NIC::reconfigure(const Configuration * c) 
 {
     return true;
 } 
-
-const SiFiveU_NIC::Configuration & SiFiveU_NIC::configuration() 
-{
-    return _configuration;
-}
-
-const SiFiveU_NIC::Statistics & SiFiveU_NIC::statistics() 
-{
-    return _statistics;
-}
 
 __END_SYS

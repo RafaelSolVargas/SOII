@@ -179,16 +179,17 @@ private:
 
 // (Conditional) Observer x (Conditionally) Observed with Data
 template<typename D, typename C = void>
-class Data_Observer;
+class Data_Observing;
 
+// This class
 template<typename D, typename C = void>
 class Data_Observed
 {
-    friend class Data_Observer<D, C>;
+    friend class Data_Observing<D, C>;
 
 private:
-    typedef Data_Observer<D, C> _Observer;
-    typedef typename Simple_Ordered_List<Data_Observer<D, C>, C>::Element Element;
+    typedef Data_Observing<D, C> _Observer;
+    typedef typename Simple_Ordered_List<Data_Observing<D, C>, C>::Element Element;
 
 public:
     typedef D Observed_Data;
@@ -203,14 +204,14 @@ public:
         db<Observers>(TRC) << "~Data_Observed(this=" << this << ")" << endl;
     }
 
-    virtual void attach(Data_Observer<D, C> * o, const C & c) {
+    virtual void attach(Data_Observing<D, C> * o, const C & c) {
         db<Observers>(TRC) << "Data_Observed::attach(obs=" << o << ",cond=" << c << ")" << endl;
 
         o->_link = Element(o, c);
         _observers.insert(&o->_link);
     }
 
-    virtual void detach(Data_Observer<D, C> * o, const C & c) {
+    virtual void detach(Data_Observing<D, C> * o, const C & c) {
         db<Observers>(TRC) << "Data_Observed::detach(obs=" << o << ",cond=" << c << ")" << endl;
 
         _observers.remove(&o->_link);
@@ -248,11 +249,12 @@ public:
     virtual unsigned int observers() const { return _observers.size(); }
 
 private:
-    Simple_Ordered_List<Data_Observer<D, C>, C> _observers;
+    Simple_Ordered_List<Data_Observing<D, C>, C> _observers;
 };
 
+// This class
 template<typename D, typename C>
-class Data_Observer
+class Data_Observing
 {
     friend class Data_Observed<D, C>;
 
@@ -261,13 +263,13 @@ public:
     typedef C Observing_Condition;
 
 protected:
-    Data_Observer(): _link(this) {
-        db<Observers>(TRC) << "Data_Observer() => " << this << endl;
+    Data_Observing(): _link(this) {
+        db<Observers>(TRC) << "Data_Observing() => " << this << endl;
     }
 
 public:
-    virtual ~Data_Observer() {
-        db<Observers>(TRC) << "~Data_Observer(this=" << this << ")" << endl;
+    virtual ~Data_Observing() {
+        db<Observers>(TRC) << "~Data_Observing(this=" << this << ")" << endl;
     }
 
     virtual void update(Data_Observed<D, C> * o, const C & c, D * d) = 0;
@@ -281,11 +283,11 @@ private:
 template<typename D>
 class Data_Observed<D, void>
 {
-    friend class Data_Observer<D, void>;
+    friend class Data_Observing<D, void>;
 
 private:
-    typedef Data_Observer<D, void> _Observer;
-    typedef typename Simple_List<Data_Observer<D, void>>::Element Element;
+    typedef Data_Observing<D, void> _Observer;
+    typedef typename Simple_List<Data_Observing<D, void>>::Element Element;
 
 public:
     typedef D Observed_Data;
@@ -299,14 +301,14 @@ public:
         db<Observers>(TRC) << "~Data_Observed(this=" << this << ")" << endl;
     }
 
-    virtual void attach(Data_Observer<D, void> * o) {
+    virtual void attach(Data_Observing<D, void> * o) {
         db<Observers>(TRC) << "Data_Observed::attach(obs=" << o << ")" << endl;
 
         o->_link = Element(o);
         _observers.insert(&o->_link);
     }
 
-    virtual void detach(Data_Observer<D, void> * o) {
+    virtual void detach(Data_Observing<D, void> * o) {
         db<Observers>(TRC) << "Data_Observed::detach(obs=" << o << ")" << endl;
 
         _observers.remove(&o->_link);
@@ -340,11 +342,11 @@ public:
     virtual unsigned int observers() const { return _observers.size(); }
 
 private:
-    Simple_List<Data_Observer<D, void>> _observers;
+    Simple_List<Data_Observing<D, void>> _observers;
 };
 
 template<typename D>
-class Data_Observer<D, void>
+class Data_Observing<D, void>
 {
     friend class Data_Observed<D, void>;
 
@@ -352,13 +354,13 @@ public:
     typedef D Observed_Data;
 
 protected:
-    Data_Observer(): _link(this) {
-        db<Observers>(TRC) << "Data_Observer() => " << this << endl;
+    Data_Observing(): _link(this) {
+        db<Observers>(TRC) << "Data_Observing() => " << this << endl;
     }
 
 public:
-    virtual ~Data_Observer() {
-        db<Observers>(TRC) << "~Data_Observer(this=" << this << ")" << endl;
+    virtual ~Data_Observing() {
+        db<Observers>(TRC) << "~Data_Observing(this=" << this << ")" << endl;
     }
 
     virtual void update(Data_Observed<D, void> * o, D * d) = 0;
