@@ -10,6 +10,7 @@
 #include <utility/list.h>
 #include <utility/observer.h>
 #include <utility/buffer.h>
+#include <utility/nic_buffers.h>
 
 __BEGIN_SYS
 

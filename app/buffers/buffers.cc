@@ -7,7 +7,6 @@ using namespace EPOS;
 
 OStream cout;
 
-
 long* allocate_numbers_in_heap(int id, int quant) 
 {
     long* numbers = new long[quant];

@@ -1,6 +1,7 @@
 // EPOS Application Initializer
 
 #include <machine/riscv/sifive_u/sifiveu_nic.h>
+#include <machine/riscv/sifive_u/sifiveu_observer.h>
 #include <architecture.h>
 #include <utility/heap.h>
 #include <machine.h>
@@ -56,6 +57,12 @@ public:
         if (NIC_ENABLED) {
             db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
             System::_nic = new (SYSTEM) SiFiveU_NIC();
+
+            // Cria uma instância de observador para a NIC
+            NIC_Observer * observer = new (SYSTEM) NIC_Observer();
+
+            // Avisa para a NIC que temos uma classe observando ela pelo protocolo IP
+            System::_nic->attach(observer, Ethernet::PROTO_IP);
         }
     }
 };
