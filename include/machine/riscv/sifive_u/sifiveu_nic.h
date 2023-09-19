@@ -72,7 +72,7 @@ public:
         enum {
             // Others bits is for address
             WRAP = 1,
-            OWNER = 0,
+            OWNER_IS_NIC = 0,
             SIZE_MASK = 0x3fff
         };
 
@@ -92,7 +92,7 @@ public:
     // Transmit Descriptor
     struct Tx_Desc: public Desc {
         enum {
-            OWNER = 31,
+            OWNER_IS_NIC = 31,
             LAST = 15,
             SIZE_MASK = 0x1fff
             // 14 is reserved
@@ -195,6 +195,8 @@ class SiFiveU_NIC: private NIC<Ethernet>, private GEM
     friend class Init_System;
     friend class Init_Application;
 
+    typedef Ethernet::BufferInfo BufferInfo;
+
 private:
     // Transmit and Receive Ring sizes
     static const unsigned int UNITS = Traits<SiFiveU_NIC>::UNITS;
@@ -208,35 +210,15 @@ private:
     static const unsigned int DESC_BUFFER_SIZE = RX_DESC_BUFFER_SIZE + TX_DESC_BUFFER_SIZE;
 
 public:
-    class AllocBufferInfo 
-    {
-    public:
-        typedef Simple_List<AllocBufferInfo> List;
-        typedef typename List::Element Element;
-        typedef SiFiveU_NIC::Buffer Buffer;
-
-        AllocBufferInfo(Buffer * buffer, unsigned int index, unsigned long size) : _buffer(buffer), _index(index), 
-            _size(size),  _link1(this), _link2(this) { }
-
-        SiFiveU_NIC::Buffer * buffer() { return _buffer; }
-        unsigned int index() { return _index; }
-        unsigned long size() { return _size; }
-        Element * link1() { return &_link1; }
-        Element * link() { return link1(); }
-        Element * lint() { return link1(); }
-        Element * link2() { return &_link2; }
-        Element * lext() { return link2(); } 
-
-    private: 
-        Buffer * _buffer;
-        unsigned int _index;
-        unsigned long _size;
-        Element _link1;
-        Element _link2;
-    };
-
     SiFiveU_NIC();
     ~SiFiveU_NIC();
+
+    /// @brief Allocate one or more Buffers in a Simple_List<BufferInfo> to allow the user to copy his data
+    /// into the buffers, the list returned will be passed to the send(BufferInfo*) afterwards 
+    /// @param dst The destination MAC address
+    /// @param prot The protocol being used to send the data
+    /// @param payload The size of data that need to be passed
+    BufferInfo * alloc(const Address & dst, const Protocol & prot, unsigned int payload);
 
     /// @brief Allocate a Buffer and immediately triggers the send to the GEM
     /// @param dst The destination MAC address
@@ -245,37 +227,43 @@ public:
     /// @param size The size of the data
     int send(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
     
-    /// @brief 
+    /// @brief TODO -> Descobrir objetivo desse método
     /// @param src 
     /// @param prot 
     /// @param data 
     /// @param size 
     int receive(Address * src, Protocol * prot, void * data, unsigned int size);
 
-    /// @brief Allocate one or more Buffers in a Simple_List<AllocBufferInfo> to allow the user to copy his data
-    /// into the buffers, the list returned will be passed to the send(AllocBufferInfo*) afterwards 
-    /// @param dst The destination MAC address
-    /// @param prot The protocol being used to send the data
-    /// @param payload The size of data that need to be passed
-    AllocBufferInfo * alloc(const Address & dst, const Protocol & prot, unsigned int payload);
+    /// @brief Receive a BufferInfo * that could be a list of pre allocated Buffers and execute the sending of them
+    /// @param allocated_buffer The returned BufferInfo * from the BufferInfo * alloc() method
+    int send(BufferInfo * allocated_buffer);
 
-    /// @brief Receive a AllocBufferInfo * that could be a list of pre allocated Buffers and execute the sending of them
-    /// @param allocated_buffer The returned AllocBufferInfo * from the AllocBufferInfo * alloc() method
-    int send(AllocBufferInfo * allocated_buffer);
+    /// @brief Method to be called by the Observers after using the Buffer, will free this buffer to be used again by GEM
+    /// @param buf The buffer that was passed to the upper layers
+    bool free(BufferInfo * buf) override;
     
-    /// @brief 
-    /// @param buf 
-    bool drop(AllocBufferInfo * buf);
-    
-    /// @brief 
-    /// @param buf 
-    void free(AllocBufferInfo * buf);
-
-    bool reconfigure(const Configuration * c = 0); // pass null to reset
+    bool reconfigure(const Configuration * c = 0);
     void address(const Address &);
+
     const Address & address() { return _address; }
     const Configuration & configuration() { return _configuration; }
     const Statistics & statistics() { return _statistics; }
+
+    // Método para adicionar um observador para ser notificado pela NIC
+    void attach(Observer * o, const Protocol & p) override {
+        NIC<Ethernet>::attach(o, p);
+        
+        // TODO -> Ativar receber interrupções na IC
+    }
+
+    void detach(Observer * o, const Protocol & p) {
+        NIC<Ethernet>::detach(o, p);
+
+        if(!observers()) 
+        {
+            // TODO -> Desativar receber interrupções na IC
+        }
+    }
 
     /// @brief DO NOT USE THIS METHOD
     Buffer * alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) { return _rx_buffers[0]; }
@@ -283,19 +271,12 @@ public:
     int send(Buffer * buf) { return 1; }
     /// @brief DO NOT USE THIS METHOD
     bool drop(Buffer * buf) { return true; } // after send, while still in the working queues, not supported by many NICs
-    /// @brief DO NOT USE THIS METHOD
-    void free(Buffer * buf) { } // to be called by observers after handling notifications from the NIC
 
 private:
-    // Interrupt dispatching binding
-    struct Device {
-        PCNet32 * device;
-        unsigned int interrupt;
-    };
-
     void configure();
     void configure_mac();
-    void receive();
+    void configure_int();
+    void interruption_handler();
 
 private:
     Configuration _configuration;
@@ -315,7 +296,7 @@ private:
     Buffer * _rx_buffers[RX_BUFS];
     Buffer * _tx_buffers[TX_BUFS];
 
-    static Device _devices[UNITS];
+    SiFiveU_NIC * _device;
 };
 
 

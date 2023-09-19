@@ -95,9 +95,35 @@ public:
     // Contiguous Buffer
     typedef _UTIL::CBuffer Buffer;
 
+    class BufferInfo 
+    {
+    public:
+        typedef Simple_List<BufferInfo> List;
+        typedef typename List::Element Element;
+
+        BufferInfo(Buffer * buffer, unsigned int index, unsigned long size) : _buffer(buffer), _index(index), 
+            _size(size),  _link1(this), _link2(this) { }
+
+        Buffer * buffer() { return _buffer; }
+        unsigned int index() { return _index; }
+        unsigned long size() { return _size; }
+        Element * link1() { return &_link1; }
+        Element * link() { return link1(); }
+        Element * lint() { return link1(); }
+        Element * link2() { return &_link2; }
+        Element * lext() { return link2(); } 
+
+    private: 
+        Buffer * _buffer;
+        unsigned int _index;
+        unsigned long _size;
+        Element _link1;
+        Element _link2;
+    };
+
     // Observers of a protocol get a also a pointer to the received buffer
-    typedef Data_Observing<Buffer, Protocol> Observer;
-    typedef Data_Observed<Buffer, Protocol> Observed;
+    typedef Data_Observing<BufferInfo, Protocol> Observer;
+    typedef Data_Observed<BufferInfo, Protocol> Observed;
 
     // Ethernet NICs usually don't export the timer for SFD time stamping, so the basic time type is set to TSC
     // NICs that do feature time stamping must have any different type converted to TSC::Time_Stamp

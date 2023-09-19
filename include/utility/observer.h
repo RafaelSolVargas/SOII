@@ -217,6 +217,9 @@ public:
         _observers.remove(&o->_link);
     }
 
+    // Method to Observers to return the data to the Observed deallocate it
+    virtual bool free(D * d) = 0;
+
     virtual bool notify(const C & c, D * d) {
         bool notified = false;
 

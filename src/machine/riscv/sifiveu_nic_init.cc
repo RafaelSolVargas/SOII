@@ -9,6 +9,8 @@ __BEGIN_SYS
 
 SiFiveU_NIC::SiFiveU_NIC()
 {
+    SiFiveU_NIC::_device = this;
+
     _configuration.unit = 1;
     _configuration.timer_frequency = TSC::frequency();
     _configuration.timer_accuracy = TSC::accuracy() / 1000;
@@ -67,7 +69,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         _rx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
         _rx_ring[i].phy_addr = Phy_Addr(_rx_buffers[i]->address()); // Verify how to keep bits [1-0] 
-        _rx_ring[i].phy_addr &= ~Rx_Desc::OWNER; // Disable OWNER bit
+        _rx_ring[i].phy_addr &= ~Rx_Desc::OWNER_IS_NIC; // Disable OWNER_IS_NIC bit
         _rx_ring[i].phy_addr &= ~Rx_Desc::WRAP; // Disable WRAP bit
         _rx_ring[i].ctrl = 0;
 
@@ -82,7 +84,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         _tx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
         _tx_ring[i].phy_addr = Phy_Addr(_tx_buffers[i]->address()); // Verify how to keep bits [1-0] 
-        _tx_ring[i].ctrl |= Tx_Desc::OWNER; // Write 1, if 0 the DMA will start
+        _tx_ring[i].ctrl |= Tx_Desc::OWNER_IS_NIC; // Write 1, if 0 the DMA will start
         _tx_ring[i].ctrl &= ~Tx_Desc::LAST; // Set as not the last buffer
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << _tx_buffers[i]->address() << ")" << endl;
@@ -104,6 +106,9 @@ void SiFiveU_NIC::configure()
 
     // Configure MAC Address
     configure_mac();
+
+    // Configure the interruptions
+    configure_int();
 
     // Configure the DMA control register
     *GEM::reg(R_DMA_CFG) = ((sizeof(Frame) + sizeof(Header)) / 64) << 16;
@@ -174,6 +179,17 @@ SiFiveU_NIC::~SiFiveU_NIC() {
     for (unsigned int i = 0; i < TX_BUFS; i++) {
         delete _tx_buffers[i];
     }
+}
+
+void SiFiveU_NIC::configure_int() 
+{
+    SiFiveU_NIC::_device = this;
+
+    // Install interruption_handler as the interruption handler
+
+    // Enable interrupts for device
+
+    // Change priority of interrupts
 }
 
 __END_SYS

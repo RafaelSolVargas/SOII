@@ -10,16 +10,16 @@ __BEGIN_SYS
 class NIC_Observer: public Ethernet::Observer
 {
 private:
-    typedef Ethernet::Buffer Buffer;
+    typedef Ethernet::BufferInfo BufferInfo;
     typedef Ethernet::Protocol Protocol;
     typedef Ethernet::Observed Observed;
 
 public:
-    NIC_Observer() { }
+    NIC_Observer() {}
 
-    void update(Observed * observed, const Protocol & c, Buffer * d) override
+    void update(Observed * observed, const Protocol & c, BufferInfo * d) override
     {
-        
+        observed->free(d);
     };
 };
 
