@@ -52,7 +52,7 @@ SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol
         new (buffer->alloc(size_sended)) Frame(_configuration.address, dst, prot);
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::alloc:descriptor[" << i << "]=" << descriptor << " => " << *descriptor << endl;
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::alloc:buf=" << buffer << " => " << *buffer << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::alloc:buffer=" << buffer << " => " << *buffer << endl;
 
         // Pass the information of this buffer to the allocatedBuffer and store in the list
         BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, size_sended);
@@ -80,7 +80,7 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
                              << "buff=" << buffer << ",index=" << index << ",size=" << buff_size
                              << ")" << endl;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:buf=" << buffer << " => " << *buffer << endl;
+        db<SiFiveU_NIC>(INF) << "::buffer=" << buffer << " => " << *buffer << endl;
 
         // Atualiza o descritor
         descriptor.update_size(buff_size + sizeof(Header));
@@ -161,6 +161,51 @@ int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * d
     _tx_buffers[i]->unlock();
 
     return size;
+}
+
+void SiFiveU_NIC::receive() 
+{
+    // Passa, começando pelo Buffer em _rx_current por no máximo RX_BUFS buffers, utiliza um contador decrescente para 
+    // limitar o máximo de loops
+    for(unsigned int count = RX_BUFS, i = _rx_cur; 
+                    count && !(_rx_ring[i].ctrl & Rx_Desc::OWNER_IS_NIC); 
+                    count--, ++i %= RX_BUFS, _rx_cur = i) 
+    {
+        if(_rx_buffers[i]->lock()) // Trava o Buffer para tratar o receive 
+        {
+            Rx_Desc * descriptor = &_rx_ring[i];
+            Buffer * buffer = _rx_buffers[i];
+            // TODO -> Adicionar um parâmetro data_address dentro do Buffer e sempre que ocorrer um alloc dentro do Buffer
+            // guardar o endereço alocado, para que aqui eu consiga o dado alocado, por meio desse address e usando um data() com template
+            Frame * frame = 0;
+
+            // Tomando como base que o payload do Frame é o último dado, podemos atualizar o data_address do buffer, aumentando em sizeof
+            // (Header) para que os observadores dessa NIC ao chamar data() consiga fazer o cast direto para o dado que ele enviou.
+
+            // Permitir também possibilidade de diminuir o tamanho, para cortar, caso necessário, dados após o payload, como o CRC.
+
+            db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::receive: frame = " << *frame << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::handle_int: descriptor[" << i << "] = " << descriptor << " => " << *descriptor << endl;
+
+            // TODO -> Ler o size do descriptor e passar para cá
+            BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, 0); 
+
+            // Caso estejamos recebendo um buffer que veio de nós, liberar diretamente
+            if (frame->header()->src() == _configuration.address) 
+            {
+                free(buffer_info);
+
+                continue;
+            }
+
+            // Se ninguém foi notificado descarta o buffer, caso contrário os observadores tem a responsabilidade de chamar o free 
+            bool someone_was_notified = notify(frame->prot(), buffer_info);
+            if(!someone_was_notified) 
+            {
+                free(buffer_info);
+            } 
+        }
+    }
 }
 
 int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size) 

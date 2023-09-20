@@ -234,6 +234,9 @@ public:
     /// @param size 
     int receive(Address * src, Protocol * prot, void * data, unsigned int size);
 
+    /// @brief Method to be called when a interruption of incoming Frame happen. Must get the Buffer and notify the Observers
+    void receive();
+
     /// @brief Receive a BufferInfo * that could be a list of pre allocated Buffers and execute the sending of them
     /// @param allocated_buffer The returned BufferInfo * from the BufferInfo * alloc() method
     int send(BufferInfo * allocated_buffer);

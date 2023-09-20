@@ -42,6 +42,8 @@ class System
 public:
     static System_Info * const info() { assert(_si); return _si; }
 
+    static SiFiveU_NIC * _nic;
+
 private:
     static void init();
 
@@ -54,7 +56,6 @@ private:
     static CBuffer * _Cbuffer;
     static NonCBuffer * _NCbuffer;
 
-    static SiFiveU_NIC * _nic;
 };
 
 __END_SYS
