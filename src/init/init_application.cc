@@ -54,17 +54,15 @@ public:
             System::_NCbuffer = new (SYSTEM) NonCBuffer(address, nc_buffer_segment->size());
         }  
 
-        if (NIC_ENABLED) {
-            db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
-            System::_nic = new (SYSTEM) SiFiveU_NIC();
+        db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
+        System::_nic = new (SYSTEM) SiFiveU_NIC();
 
-            // Cria uma instância de observador para a NIC
-            NIC_Observer * observer = new (SYSTEM) NIC_Observer();
+        // Cria uma instância de observador para a NIC
+        NIC_Observer * observer = new (SYSTEM) NIC_Observer();
 
-            // Avisa para a NIC que temos uma classe observando ela pelo protocolo IP
-            System::_nic->attach(observer, Ethernet::PROTO_IP);
+        // Avisa para a NIC que temos uma classe observando ela pelo protocolo IP
+        System::_nic->attach(observer, Ethernet::PROTO_IP);
         }
-    }
 };
 
 // Global object "init_application"  must be linked to the application (not to the system) and there constructed at first.

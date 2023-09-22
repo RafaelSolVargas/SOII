@@ -10,9 +10,9 @@ template<> struct Traits<Build>: public Traits_Tokens
 {
     // Basic configuration
     static const unsigned int MODE = LIBRARY;
-    static const unsigned int ARCHITECTURE = IA32;
-    static const unsigned int MACHINE = PC;
-    static const unsigned int MODEL = Legacy_PC;
+    static const unsigned int ARCHITECTURE = RV64;
+    static const unsigned int MACHINE = RISCV;
+    static const unsigned int MODEL = SiFive_U;
     static const unsigned int CPUS = 1;
     static const unsigned int NODES = 2; // (> 1 => NETWORKING)
     static const unsigned int EXPECTED_SIMULATION_TIME = 60; // s (0 => not simulated)
@@ -94,6 +94,8 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = Traits<Machine>::HEAP_SIZE;
     static const unsigned int MAX_THREADS = Traits<Machine>::MAX_THREADS;
+    static const unsigned int BUFFER_ENABLED = true;
+    static const unsigned int NET_BUFFERS_CLIENTS = 1;
 };
 
 template<> struct Traits<System>: public Traits<Build>
@@ -105,10 +107,15 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned long LIFE_SPAN = 1 * YEAR; // s
     static const unsigned int DUTY_CYCLE = 1000000; // ppm
 
+    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
+
     static const bool reboot = true;
 
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
+
+    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 3000; // 3000 bytes
+    static const unsigned int NON_CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 65536; // 64 Kb
 };
 
 template<> struct Traits<Thread>: public Traits<Build>

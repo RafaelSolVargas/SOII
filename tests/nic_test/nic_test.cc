@@ -3,6 +3,8 @@
 #include <machine/nic.h>
 #include <time.h>
 #include <utility/random.h>
+#include <network/ethernet.h>
+#include <machine/riscv/sifive_u/sifiveu_nic.h>
 
 using namespace EPOS;
 
@@ -27,7 +29,12 @@ private:
 void ethernet_test() {
     cout << "Ethernet Test" << endl;
 
-    NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get(0);
+    SiFiveU_NIC * my_nic = System::_nic;
+    NIC<Ethernet>::Address mac = my_nic->address();
+
+    cout << "  MAC: " << mac << endl;
+
+    NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
 
     NIC<Ethernet>::Address src, dst;
     NIC<Ethernet>::Protocol prot;

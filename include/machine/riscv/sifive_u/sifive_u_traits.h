@@ -113,6 +113,35 @@ template<> struct Traits<Scratchpad>: public Traits<Machine_Common>
     static const bool enabled = true;
 };
 
+template<> struct Traits<Ethernet>: public Traits<Machine_Common>
+{
+    typedef LIST<SiFiveU_NIC> DEVICES;
+    static const unsigned int UNITS = DEVICES::Length;
+
+    static const bool enabled = (Traits<Build>::NODES > 1) && (UNITS > 0);
+
+    static const bool promiscuous = false;
+};
+
+
+// API Components
+template<> struct Traits<SiFiveU_NIC>: public Traits<Ethernet>
+{
+    static const unsigned int UNITS = DEVICES::Count<SiFiveU_NIC>::Result;
+    static const bool enabled = true;
+
+    static const unsigned int ENABLED = true;
+    static const unsigned int RECEIVE_BUFFERS = 5;
+    static const unsigned int SEND_BUFFERS = 5;
+
+    static const bool debugged = true;
+    static const bool error   = true;
+    static const bool warning = true;
+    static const bool info    = true;
+    static const bool trace   = true;
+};
+
+
 __END_SYS
 
 #endif

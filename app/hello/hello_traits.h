@@ -98,19 +98,6 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int NET_BUFFERS_CLIENTS = 1;
 };
 
-// API Components
-template<> struct Traits<SiFiveU_NIC>: public Traits<Build>
-{
-    static const unsigned int ENABLED = true;
-    static const unsigned int RECEIVE_BUFFERS = 5;
-    static const unsigned int SEND_BUFFERS = 5;
-    static const unsigned int UNITS = 10;
-
-    static const bool error   = true;
-    static const bool warning = true;
-    static const bool info    = true;
-    static const bool trace   = true;
-};
 
 template<> struct Traits<System>: public Traits<Build>
 {

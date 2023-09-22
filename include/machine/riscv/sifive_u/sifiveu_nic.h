@@ -20,7 +20,6 @@ protected:
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef MMU::DMA_Buffer DMA_Buffer;
-    typedef Ethernet::Address MAC_Address;
 
 public:
     /* Cadence GEM hardware register definitions. */
@@ -155,41 +154,10 @@ public:
 
         db<SiFiveU_NIC>(INF) << endl;
     }
-
-    /* static void write_bit_range(int registerOffset, int firstBit, int quant, bool bitValue) 
-    {
-        for (int bitOffset = firstBit; bitOffset <= quant; bitOffset++) 
-        {
-            write_bit(registerOffset, bitOffset, bitValue);
-        }
-    } */
-
-    /* static void write_bit(int registerOffset, int bitIndex, bool bitValue) {
-        Reg32 regValue = *reg(registerOffset);
-
-        Reg32 mask = static_cast<Reg32>(1U << bitIndex);
-
-        if (bitValue) 
-        {
-            regValue |= mask;
-        } 
-        else 
-        {
-            regValue &= ~mask;
-        }
-
-        write_value(registerOffset, regValue);
-    } */
-
-    /* void set_value(int offset, int value) {
-        Reg32 * pointer = reinterpret_cast<Reg32 *>(ETH_BASE + offset);
-        
-        *pointer = value;
-    } */
 };
 
 
-class SiFiveU_NIC: private NIC<Ethernet>, private GEM
+class SiFiveU_NIC: public NIC<Ethernet>, private GEM
 {
     friend class Machine_Common;
     friend class Init_System;
@@ -248,7 +216,7 @@ public:
     bool reconfigure(const Configuration * c = 0);
     void address(const Address &);
 
-    const Address & address() { return _address; }
+    const Address & address() { return _configuration.address; }
     const Configuration & configuration() { return _configuration; }
     const Statistics & statistics() { return _statistics; }
 
@@ -275,6 +243,10 @@ public:
     /// @brief DO NOT USE THIS METHOD
     bool drop(Buffer * buf) { return true; } // after send, while still in the working queues, not supported by many NICs
 
+    /// @brief Returns an instance of this class
+    /// @return 
+    static SiFiveU_NIC * get() { return _device; }
+
 private:
     void configure();
     void configure_mac();
@@ -284,7 +256,6 @@ private:
 private:
     Configuration _configuration;
     Statistics _statistics;
-    Address _address;
 
     DMA_Buffer* _rings_buffer;
 
@@ -299,7 +270,7 @@ private:
     Buffer * _rx_buffers[RX_BUFS];
     Buffer * _tx_buffers[TX_BUFS];
 
-    SiFiveU_NIC * _device;
+    static SiFiveU_NIC * _device;
 };
 
 

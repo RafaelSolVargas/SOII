@@ -7,6 +7,8 @@
 
 __BEGIN_SYS
 
+SiFiveU_NIC * SiFiveU_NIC::_device;
+
 SiFiveU_NIC::SiFiveU_NIC()
 {
     SiFiveU_NIC::_device = this;
@@ -134,6 +136,8 @@ void SiFiveU_NIC::configure()
 
 void SiFiveU_NIC::configure_mac() 
 {
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::configure_mac()" << endl;
+
     // Set the MAC address
     // https://github.com/freebsd/freebsd-src/blob/main/sys/dev/cadence/if_cgem.c
     for (int i = 0; i < 4; i++)
@@ -162,11 +166,8 @@ void SiFiveU_NIC::configure_mac()
     *GEM::reg(R_SPADDR1H) = (_configuration.address[5] << 8) | 
                           _configuration.address[4];
 
-    for (int i = 1; i < 4; i++)
-    {
-        *GEM::reg(R_SPADDR1L + i * 8) = 0;
-        *GEM::reg(R_SPADDR1H + i * 8) = 0;
-    };
+
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::MAC => " << address() << endl;
 }
 
 SiFiveU_NIC::~SiFiveU_NIC() {
