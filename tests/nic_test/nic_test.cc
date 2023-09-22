@@ -48,7 +48,9 @@ void ethernet_test() {
 
         for(int i = 0; i < 10; i++) {
             memset(data, '0' + i, nic->mtu());
+
             data[nic->mtu() - 1] = '\n';
+            
             nic->send(nic->broadcast(), 0x8888, data, nic->mtu());
         }
     } else { // receiver

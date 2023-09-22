@@ -29,6 +29,9 @@ public:
     CBuffer(unsigned long bytes) : _locked(false), _created_dma(true) {
         validate_bytes(bytes);
 
+        // Increase the size of Element and a long to allow the allocation of previous bytes quant 
+        bytes += sizeof(Element) + sizeof(long);
+
         _dma = new (SYSTEM) DMA_Buffer(bytes);
 
         _phy_addr = _dma->phy_address();
@@ -72,11 +75,10 @@ public:
     /// @return 
     /// @throws out_of_memory if was not found contiguous space for allocate for required bytes.
     void * alloc(unsigned long bytes) {
-        db<NicBuffers>(TRC) << "CBuffer(this=" << this << ",bytes=" << bytes;
+        db<NicBuffers>(TRC) << "CBuffer::alloc(this=" << this << ",bytes=" << bytes << endl;
 
         if(!bytes)
             return 0;
-
 
         // Increase a long size to be able to store the size 
         bytes += sizeof(long); 
@@ -89,6 +91,7 @@ public:
         Element * e = search_decrementing(bytes);
         if(!e) {
             out_of_memory(bytes);
+
             return 0;
         }
 
@@ -116,7 +119,7 @@ public:
     }
 
     friend Debug & operator<<(Debug & db, const CBuffer & b) {
-        db << "{gsize=" << b.grouped_size() << ",lk=" << b._locked << ",addr=" << b._phy_addr << "}";
+        db << "{grouped_size=" << b.grouped_size() << ",locked=" << b._locked << ",addr=" << b._phy_addr << "}";
         return db;
     }
 

@@ -111,7 +111,7 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
 
 int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * data, unsigned int size) 
 {
-    db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::send(s=" << _configuration.address
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send(s=" << _configuration.address
                         << ",d=" << dst << ",p=" << hex << prot << dec
                         << ",d=" << data << ",s=" << size << ")" << endl;
 

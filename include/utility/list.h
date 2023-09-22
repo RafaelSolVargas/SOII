@@ -1385,10 +1385,25 @@ public:
 
     Element * search_size(unsigned long s) {
         Element * e = head();
-        if(sizeof(Object_Type) < sizeof(Element))
+        
+        db<Lists>(TRC) << "Grouping_List::e_size => " << e->size() << endl;
+        db<Lists>(TRC) << "Object_Type Size => " << sizeof(Object_Type) << endl;
+        db<Lists>(TRC) << "Element Size => " << sizeof(Element) << endl;
+        db<Lists>(TRC) << "Minimum Size =>" << sizeof(Element) / sizeof(Object_Type) + s << endl;
+
+        if(sizeof(Object_Type) < sizeof(Element)) 
+        {
+            db<Lists>(TRC) << "1" << endl;
+
+
             for(; e && (e->size() < sizeof(Element) / sizeof(Object_Type) + s) && (e->size() != s); e = e->next());
-        else
+        }
+        else 
+        {
+            db<Lists>(TRC) << "2" << endl;
+        
             for(; e && (e->size() < s); e = e->next());
+        }
         return e;
     }
 
