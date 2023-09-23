@@ -24,15 +24,9 @@ private:
     }
 };
 
-#ifdef __ethernet__
 
 void ethernet_test() {
     cout << "Ethernet Test" << endl;
-
-    SiFiveU_NIC * my_nic = System::_nic;
-    NIC<Ethernet>::Address mac = my_nic->address();
-
-    cout << "  MAC: " << mac << endl;
 
     NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
 
@@ -44,9 +38,11 @@ void ethernet_test() {
     cout << "  MAC: " << self << endl;
 
     if(self[5] % 2) { // sender
-        Delay (5000000);
+        cout << "I'm the sender" << endl;
 
-        for(int i = 0; i < 10; i++) {
+        for(int i = 0; i < 5; i++) {
+            cout << "Sending frame " << i << endl;
+
             memset(data, '0' + i, nic->mtu());
 
             data[nic->mtu() - 1] = '\n';
@@ -54,9 +50,12 @@ void ethernet_test() {
             nic->send(nic->broadcast(), 0x8888, data, nic->mtu());
         }
     } else { // receiver
-        for(int i = 0; i < 10; i++) {
+        cout << "I'm the receiver" << endl;
+
+        for(int i = 0; i < 5; i++) {
            nic->receive(&src, &prot, data, nic->mtu());
-           cout << "  Data: " << data;
+           
+           cout << "  Data[" << i << "]: "<< data << endl;
         }
     }
 
@@ -68,7 +67,6 @@ void ethernet_test() {
          << "Rx Bytes:   " << stat.rx_bytes << "\n";
 }
 
-#endif
 
 #ifdef __ieee802_15_4__
 
