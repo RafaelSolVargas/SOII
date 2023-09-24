@@ -35,8 +35,9 @@ public:
     /* Network Config Register */
     #define R_NW_CFG 0x0004
     #define R_NW_CFG_B_FULL_DUPLEX (1 << 1)
-    #define R_NW_CFG_B_FCS (1 << 17)
     #define R_NW_CFG_B_PROMISC (1 << 4)
+    #define R_NW_CFG_B_FCS (1 << 17)
+    #define R_NW_CFG_32_WIDTH_SIZE (0 << 21)
 
     #define R_NET_STATS 0x0008
     #define R_DMA_CFG 0x010
@@ -45,6 +46,11 @@ public:
     #define R_TRANSMIT_Q_PTR 0x001C
     #define R_RECEIVE_STATS 0x0020
     #define R_INT_DISABLE 0x002C
+
+    // Interrupt Disabled Register
+    #define R_IDR 0x02C
+    #define R_IDR_INT_ALL 0x7FFFEFF
+
     #define R_IMR 0x030         /*< Interrupt Mask reg */
 
     /*< Interrupt Enable reg */
@@ -110,6 +116,11 @@ public:
             return db;
         }
     };
+
+    static volatile Reg32 &reg_value(unsigned int o) {
+        return reinterpret_cast<volatile Reg32 *>(
+            Memory_Map::ETH_BASE_ENUM)[o / sizeof(Reg32)];
+    }
 
     static volatile Reg32 * reg(unsigned int offset) {
         return reinterpret_cast<volatile Reg32*>(ETH_BASE + offset);

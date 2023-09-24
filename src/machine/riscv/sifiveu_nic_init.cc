@@ -22,13 +22,20 @@ SiFiveU_NIC::SiFiveU_NIC()
     }
 
     // Initialize the controller
-    GEM::apply_and_mask(R_NW_CTRL, 0);
-    GEM::apply_or_mask(R_NW_CTRL, R_NW_CTRL_B_CLR_STATS_REGS);
-    GEM::apply_or_mask(R_RECEIVE_STATS, 0x0000000F); 
-    GEM::apply_or_mask(R_TRANSMIT_STATS, 0x000000FF);
-    GEM::apply_or_mask(R_INT_DISABLE, 0x7FF0FEFF);
+    GEM::write_value(R_NW_CTRL, 0);
+    GEM::write_value(R_NW_CTRL, R_NW_CTRL_B_CLR_STATS_REGS);
+    
+    GEM::apply_and_mask(R_NW_CFG, R_NW_CFG_32_WIDTH_SIZE);
+
+    GEM::write_value(R_RECEIVE_STATS, 0x0000000F); 
+    GEM::write_value(R_TRANSMIT_STATS, 0x000001FF);
+    
     GEM::write_value(R_RECEIVE_Q_PTR, 0);
     GEM::write_value(R_TRANSMIT_Q_PTR, 0);
+
+    GEM::write_value(R_INT_DISABLE, 0x7FF0FEFF);
+    GEM::write_value(R_IDR, R_IDR_INT_ALL);
+    
 
     // Inicializa o DMA_Buffer que irá conter os descritores, faz a criação de um CBuffer
     _rings_buffer = new (SYSTEM) DMA_Buffer(DESC_BUFFER_SIZE);
@@ -128,10 +135,15 @@ void SiFiveU_NIC::configure()
                             | R_INT_ENABLE_B_TX_USED_READ 
                             | R_INT_ENABLE_B_RX_USED_READ;
 
-    // Print registers
-    GEM::print_register(R_NW_CTRL);
-    GEM::print_register(R_NW_CFG);
-    GEM::print_register(R_DMA_CFG);
+    db<Heaps, System>(INF) << "SiFiveU_NIC::configure(): R_NW_CFG=" << hex << reg_value(R_NW_CFG) << " \n"
+                          << "SiFiveU_NIC::configure(): R_NW_CTRL=" << hex << reg_value(R_NW_CTRL) << "\n"
+                          << "SiFiveU_NIC::configure(): R_TRANSMIT_Q_PTR=" << hex << reg_value(R_TRANSMIT_Q_PTR) << "\n"
+                          << "SiFiveU_NIC::configure(): R_RECEIVE_Q_PTR=" << hex << reg_value(R_RECEIVE_Q_PTR) << "\n"
+                          << "SiFiveU_NIC::configure(): R_IDR=" << hex << reg_value(R_IDR) << "\n"
+                          << "SiFiveU_NIC::configure(): R_TRANSMIT_STATS=" << hex << reg_value(R_TRANSMIT_STATS) << "\n"
+                          << "SiFiveU_NIC::configure(): R_RECEIVE_STATS=" << hex << reg_value(R_RECEIVE_STATS) << "\n"
+                          << "SiFiveU_NIC::configure(): R_DMA_CFG=" << hex << (reg_value(R_DMA_CFG) & (0xff << 16)) << "  \n"
+                          << "SiFiveU_NIC::configure(): R_IMR=" << hex << reg_value(R_IMR) << endl;
 }
 
 void SiFiveU_NIC::configure_mac() 
