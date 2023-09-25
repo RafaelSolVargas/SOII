@@ -40,8 +40,8 @@ void ethernet_test() {
     if(self[5] % 2) { // sender
         cout << "I'm the sender" << endl;
 
-        for(int i = 0; i < 5; i++) {
-            cout << "Sending frame " << i << endl;
+        for(int i = 0; i < 10; i++) {
+            cout << "Sending frame " << i << endl << endl;
 
             memset(data, '0' + i, nic->mtu());
 
@@ -52,10 +52,10 @@ void ethernet_test() {
     } else { // receiver
         cout << "I'm the receiver" << endl;
 
-        for(int i = 0; i < 5; i++) {
-           nic->receive(&src, &prot, data, nic->mtu());
-           
-           cout << "  Data[" << i << "]: "<< data << endl;
+        for(int i = 0; i < 10; i++) {
+            nic->receive(&src, &prot, data, nic->mtu());
+            
+            cout << "  Data[" << i << "]: "<< data << endl;
         }
     }
 

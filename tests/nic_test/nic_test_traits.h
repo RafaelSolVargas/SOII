@@ -20,7 +20,7 @@ template<> struct Traits<Build>: public Traits_Tokens
     // Default flags
     static const bool enabled = true;
     static const bool debugged = true;
-    static const bool hysterically_debugged = true;
+    static const bool hysterically_debugged = false;
 };
 
 
@@ -29,8 +29,8 @@ template<> struct Traits<Debug>: public Traits<Build>
 {
     static const bool error   = true;
     static const bool warning = true;
-    static const bool info    = false;
-    static const bool trace   = false;
+    static const bool info    = true;
+    static const bool trace   = true;
 };
 
 template<> struct Traits<Lists>: public Traits<Build>
@@ -98,16 +98,16 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int NET_BUFFERS_CLIENTS = 1;
 };
 
+
 template<> struct Traits<System>: public Traits<Build>
 {
     static const bool multithread = (Traits<Application>::MAX_THREADS > 1);
-    static const bool multiheap = Traits<Scratchpad>::enabled;
-    static const bool multitask = false;
+    static const bool multiheap = true;
+
+    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
 
     static const unsigned long LIFE_SPAN = 1 * YEAR; // s
     static const unsigned int DUTY_CYCLE = 1000000; // ppm
-
-    static const bool buffer_enable = Traits<Application>::BUFFER_ENABLED;
 
     static const bool reboot = true;
 
@@ -118,11 +118,24 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned int NON_CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 65536; // 64 Kb
 };
 
+template<> struct Traits<NicBuffers>: public Traits<Build>
+{
+    static const bool debugged = false;
+
+    static const bool error   = true;
+    static const bool warning = true;
+    static const bool info    = true;
+    static const bool trace   = true;
+};
+
+
 template<> struct Traits<Thread>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
     static const bool trace_idle = hysterically_debugged;
     static const bool simulate_capacity = false;
+    static const bool trace = false;
+    static const bool info = false;
 
     typedef RR Criterion;
     static const unsigned int QUANTUM = 10000; // us

@@ -45,10 +45,9 @@ public:
     #define R_RECEIVE_Q_PTR 0x0018
     #define R_TRANSMIT_Q_PTR 0x001C
     #define R_RECEIVE_STATS 0x0020
-    #define R_INT_DISABLE 0x002C
 
     // Interrupt Disabled Register
-    #define R_IDR 0x02C
+    #define R_INT_DISABLE 0x002C
     #define R_IDR_INT_ALL 0x7FFFEFF
 
     #define R_IMR 0x030         /*< Interrupt Mask reg */
@@ -76,20 +75,48 @@ public:
     struct Rx_Desc: public Desc {
         enum {
             // Others bits is for address
-            WRAP = 1,
-            OWNER_IS_NIC = 0,
-            SIZE_MASK = 0x3fff
+            OWNER = 1 << 0,
+            WRAP = 1 << 1,
+            END_OF_FRAME = 1 << 15,
+            START_OF_FRAME = 1 << 14,
+            // Bit 13 is for FCS check
+            SIZE_MASK = 0x0fff
         };
 
-        // Aplica máscara e altera o valor de size do descriptor
         void update_size(unsigned int size) {
             ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
         }
 
+        bool is_wrap() const {
+            return (phy_addr & WRAP);
+        }
+
+        bool is_start_of_frame() const {
+            return (phy_addr & START_OF_FRAME);
+        }
+
+        bool is_end_of_frame() const {
+            return (phy_addr & END_OF_FRAME);
+        }
+
+        bool is_whole_frame() const {
+            return is_start_of_frame() && is_end_of_frame();
+        }
+
+        bool is_owner() const {
+            return (phy_addr & OWNER);
+        }
+
+        unsigned long frame_size() const {
+            return (ctrl & SIZE_MASK);
+        }
+
         friend Debug &operator<<(Debug &db, const Rx_Desc &d) 
         {
-            db << "{" << hex << d.phy_addr << dec << ","
-                << (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
+            db << "{buff_addr=" << hex << d.phy_addr << dec << ", wrap=" << d.is_wrap()
+                << ", owner=" << d.is_owner() << ", frame_size=" << d.frame_size() 
+                << ", start=" << d.is_start_of_frame() << ", end=" << d.is_end_of_frame() 
+                << ", W2=" << hex << d.ctrl << dec << "}";
             return db;
         }
     };
@@ -97,29 +124,45 @@ public:
     // Transmit Descriptor
     struct Tx_Desc: public Desc {
         enum {
-            OWNER_IS_NIC = 31,
-            LAST = 15,
+            OWNER = 1 << 31,
+            WRAP = 1 << 30,
+            LAST = 1 << 15,
             SIZE_MASK = 0x1fff
             // 14 is reserved
             // 13-1 is for length of buffer
         };
 
-        // Aplica máscara e altera o valor de size do descriptor
         void update_size(unsigned int size) {
             ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
         }
 
+        bool is_owner() const {
+            return (phy_addr & OWNER);
+        }
+
+        bool is_wrap() const {
+            return (phy_addr & WRAP);
+        }
+
+        bool is_last() const {
+            return (phy_addr & LAST);
+        }
+
+        unsigned long frame_size() const {
+            return (ctrl & SIZE_MASK);
+        }
+
         friend Debug &operator<<(Debug &db, const Tx_Desc &d) 
         {
-            db << "{" << hex << d.phy_addr << dec << ","
-                << (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
+            db << "{" << hex << d.phy_addr << dec << ", owner=" << d.is_owner() 
+                << ", wrap=" << d.is_wrap() << ", last=" << d.is_last()
+                << ", size=" << d.frame_size() << ", W2=" << hex << d.ctrl << dec << "}";
             return db;
         }
     };
 
-    static volatile Reg32 &reg_value(unsigned int o) {
-        return reinterpret_cast<volatile Reg32 *>(
-            Memory_Map::ETH_BASE_ENUM)[o / sizeof(Reg32)];
+    static volatile Reg32 & reg_value(unsigned int offset) {
+        return reinterpret_cast<volatile Reg32 *>(ETH_BASE)[offset / sizeof(Reg32)];
     }
 
     static volatile Reg32 * reg(unsigned int offset) {
@@ -138,6 +181,7 @@ public:
 
     static void apply_or_mask(int offset, Reg32 mask) {
         Reg32* addr = reinterpret_cast<Reg32*>(ETH_BASE + offset);
+        
         *addr = *addr | mask;
     }
 

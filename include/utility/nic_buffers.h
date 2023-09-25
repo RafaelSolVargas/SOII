@@ -1,6 +1,6 @@
 // EPOS Network Buffer Management Utility Declarations
 
-#ifndef __nic_buffers_h
+#ifndef __nic_buffers_h 
 #define __nic_buffers_h
 
 #include <utility/debug.h>

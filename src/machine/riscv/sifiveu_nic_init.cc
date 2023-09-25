@@ -33,10 +33,8 @@ SiFiveU_NIC::SiFiveU_NIC()
     GEM::write_value(R_RECEIVE_Q_PTR, 0);
     GEM::write_value(R_TRANSMIT_Q_PTR, 0);
 
-    GEM::write_value(R_INT_DISABLE, 0x7FF0FEFF);
-    GEM::write_value(R_IDR, R_IDR_INT_ALL);
+    GEM::write_value(R_INT_DISABLE, R_IDR_INT_ALL);
     
-
     // Inicializa o DMA_Buffer que irá conter os descritores, faz a criação de um CBuffer
     _rings_buffer = new (SYSTEM) DMA_Buffer(DESC_BUFFER_SIZE);
 
@@ -78,11 +76,12 @@ SiFiveU_NIC::SiFiveU_NIC()
         _rx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
         _rx_ring[i].phy_addr = Phy_Addr(_rx_buffers[i]->address()); // Verify how to keep bits [1-0] 
-        _rx_ring[i].phy_addr &= ~Rx_Desc::OWNER_IS_NIC; // Disable OWNER_IS_NIC bit
+        _rx_ring[i].phy_addr &= ~Rx_Desc::OWNER; // Write 0, now the GEM controls this buffer
         _rx_ring[i].phy_addr &= ~Rx_Desc::WRAP; // Disable WRAP bit
         _rx_ring[i].ctrl = 0;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_BUFF[" << i << "] => " << _rx_buffers[i] << "(Addr=" << _rx_buffers[i]->address() << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << _rx_ring[i] << endl;
+        db<SiFiveU_NIC>(INF) << "Buffer => " << _rx_buffers[i] << "(Addr=" << _rx_buffers[i]->address() << ")\n" << endl;
     }
     _rx_ring[RX_BUFS - 1].phy_addr |= Rx_Desc::WRAP; // Set as the last buffer
 
@@ -92,13 +91,14 @@ SiFiveU_NIC::SiFiveU_NIC()
         // A classe CBuffer já utiliza diretamente a classe DMA_Buffer para alocações contíguas 
         _tx_buffers[i] = new (SYSTEM) Buffer(BUFF_SIZE);
 
-        _tx_ring[i].phy_addr = Phy_Addr(_tx_buffers[i]->address()); // Verify how to keep bits [1-0] 
-        _tx_ring[i].ctrl |= Tx_Desc::OWNER_IS_NIC; // Write 1, if 0 the DMA will start
-        _tx_ring[i].ctrl &= ~Tx_Desc::LAST; // Set as not the last buffer
+        _tx_ring[i].phy_addr = Phy_Addr(_tx_buffers[i]->address());
+        _tx_ring[i].ctrl |= Tx_Desc::OWNER; // Write 1, is owned by NIC
+        _tx_ring[i].ctrl &= ~Tx_Desc::WRAP; // Set as not the last buffer
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_BUFF[" << i << "] => " << _tx_buffers[i] << "(Addr= " << _tx_buffers[i]->address() << ")" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_DESC[" << i << "] => " << _tx_ring[i] << endl;
+        db<SiFiveU_NIC>(INF) << "Buffer => " << _tx_buffers[i] << "(Addr=" << _tx_buffers[i]->address() << ")\n" << endl;
     }
-    _tx_ring[TX_BUFS - 1].ctrl |= Tx_Desc::LAST; // Set as the last buffer
+    _tx_ring[TX_BUFS - 1].ctrl |= Tx_Desc::WRAP; // Set as the last buffer
 
     configure();
 }
@@ -123,8 +123,8 @@ void SiFiveU_NIC::configure()
     *GEM::reg(R_DMA_CFG) = ((sizeof(Frame) + sizeof(Header)) / 64) << 16;
 
     // Configure the physical address of Rx and Tx rings buffers
-    *GEM::reg(R_RECEIVE_Q_PTR) = _tx_ring_phy;
-    *GEM::reg(R_TRANSMIT_Q_PTR) = _rx_ring_phy;
+    *GEM::reg(R_RECEIVE_Q_PTR) = _rx_ring_phy;
+    *GEM::reg(R_TRANSMIT_Q_PTR) = _tx_ring_phy;
 
     // Enable tx and rx
     GEM::apply_or_mask(R_NW_CTRL, (R_NW_CTRL_B_RX_EN | R_NW_CTRL_B_TX_EN));
@@ -135,15 +135,16 @@ void SiFiveU_NIC::configure()
                             | R_INT_ENABLE_B_TX_USED_READ 
                             | R_INT_ENABLE_B_RX_USED_READ;
 
-    db<Heaps, System>(INF) << "SiFiveU_NIC::configure(): R_NW_CFG=" << hex << reg_value(R_NW_CFG) << " \n"
-                          << "SiFiveU_NIC::configure(): R_NW_CTRL=" << hex << reg_value(R_NW_CTRL) << "\n"
-                          << "SiFiveU_NIC::configure(): R_TRANSMIT_Q_PTR=" << hex << reg_value(R_TRANSMIT_Q_PTR) << "\n"
-                          << "SiFiveU_NIC::configure(): R_RECEIVE_Q_PTR=" << hex << reg_value(R_RECEIVE_Q_PTR) << "\n"
-                          << "SiFiveU_NIC::configure(): R_IDR=" << hex << reg_value(R_IDR) << "\n"
-                          << "SiFiveU_NIC::configure(): R_TRANSMIT_STATS=" << hex << reg_value(R_TRANSMIT_STATS) << "\n"
-                          << "SiFiveU_NIC::configure(): R_RECEIVE_STATS=" << hex << reg_value(R_RECEIVE_STATS) << "\n"
-                          << "SiFiveU_NIC::configure(): R_DMA_CFG=" << hex << (reg_value(R_DMA_CFG) & (0xff << 16)) << "  \n"
-                          << "SiFiveU_NIC::configure(): R_IMR=" << hex << reg_value(R_IMR) << endl;
+    db<Heaps, System>(INF) 
+        << "SiFiveU_NIC::configure(): R_NW_CFG=" << hex << GEM::reg_value(R_NW_CFG) << " \n"
+        << "SiFiveU_NIC::configure(): R_NW_CTRL=" << hex << GEM::reg_value(R_NW_CTRL) << "\n"
+        << "SiFiveU_NIC::configure(): R_TRANSMIT_Q_PTR=" << hex << GEM::reg_value(R_TRANSMIT_Q_PTR) << "\n"
+        << "SiFiveU_NIC::configure(): R_RECEIVE_Q_PTR=" << hex << GEM::reg_value(R_RECEIVE_Q_PTR) << "\n"
+        << "SiFiveU_NIC::configure(): R_IDR=" << hex << GEM::reg_value(R_INT_DISABLE) << "\n"
+        << "SiFiveU_NIC::configure(): R_TRANSMIT_STATS=" << hex << GEM::reg_value(R_TRANSMIT_STATS) << "\n"
+        << "SiFiveU_NIC::configure(): R_RECEIVE_STATS=" << hex << GEM::reg_value(R_RECEIVE_STATS) << "\n"
+        << "SiFiveU_NIC::configure(): R_DMA_CFG=" << hex << (GEM::reg_value(R_DMA_CFG) & (0xff << 16)) << "  \n"
+        << "SiFiveU_NIC::configure(): R_IMR=" << hex << GEM::reg_value(R_IMR) << endl;
 }
 
 void SiFiveU_NIC::configure_mac() 
