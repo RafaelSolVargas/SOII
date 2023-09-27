@@ -36,7 +36,7 @@ public:
     #define R_NW_CFG 0x0004
     #define R_NW_CFG_B_FULL_DUPLEX (1 << 1)
     #define R_NW_CFG_B_PROMISC (1 << 4)
-    #define R_NW_CFG_B_FCS (1 << 17)
+    #define R_NW_CFG_B_REM_FCS (1 << 17)
     #define R_NW_CFG_32_WIDTH_SIZE (0 << 21)
 
     #define R_NET_STATS 0x0008
@@ -225,6 +225,7 @@ private:
     static const unsigned int UNITS = Traits<SiFiveU_NIC>::UNITS;
     static const unsigned int TX_BUFS = Traits<SiFiveU_NIC>::SEND_BUFFERS;
     static const unsigned int RX_BUFS = Traits<SiFiveU_NIC>::RECEIVE_BUFFERS;
+    static const unsigned int BRING_FCS_TO_MEM = false;
     static const unsigned int BUFF_SIZE = sizeof(Ethernet::Frame);
 
     // Size of the DMA Buffer that will host the only ring buffers

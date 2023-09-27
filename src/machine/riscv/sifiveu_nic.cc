@@ -195,12 +195,12 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
     // Copy the data
     memcpy(data, frame->data<void>(), size);
 
-    // Release the buffer to the GEM
-    descriptor->phy_addr &= ~Rx_Desc::OWNER;
 
     _statistics.rx_packets++;
     _statistics.rx_bytes += frame_size;
 
+    // Free this buffer
+    descriptor->phy_addr &= ~Rx_Desc::OWNER;
     buffer->unlock();
 
     return size;
@@ -220,10 +220,6 @@ void SiFiveU_NIC::receive()
             
             // The internal protocol is to set the data always in the address() of CBuffer
             Frame * frame = reinterpret_cast<Frame*>(buffer->address());
-            
-            // Tomando como base que o payload do Frame é o último dado, podemos atualizar o data_address do buffer, aumentando em 
-            // sizeof(Header) para que os observadores dessa NIC ao chamar data() consiga fazer o cast direto para o dado que ele enviou.
-            // Permitir também possibilidade de diminuir o tamanho, para cortar, caso necessário, dados após o payload, como o CRC.
 
             db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::descriptor[" << i << "] = " << descriptor << " => " << *descriptor << endl;
 
@@ -231,6 +227,14 @@ void SiFiveU_NIC::receive()
             unsigned long frame_size = descriptor->frame_size();
             BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
 
+            // Update the data address to remove the Header
+            buffer_info->shrink_left(sizeof(Header));
+
+            // Remove the size considered by the bits of FCS 
+            if (BRING_FCS_TO_MEM) {
+                buffer_info->shrink(sizeof(CRC));
+            }
+            
             // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
             if (frame->header()->src() == _configuration.address) 
             {
@@ -254,11 +258,7 @@ void SiFiveU_NIC::receive()
 
 bool SiFiveU_NIC::free(BufferInfo * buffer_info) 
 {
-    // Esse método precisa limpar um buffer que possuía algum dado que foi recebido
-    // e passado para os observadores e após eles utilizarem estão liberando
-    // Esse buffer nesse meio tempo precisa de algum tipo de proteção para dizer que já foi recebido
-    // pelo tratador de interrupções mas não foi liberado ainda
-
+    // Recupera o buffer e o descritor
     unsigned int index = buffer_info->index();
 
     Buffer* buffer = buffer_info->buffer();

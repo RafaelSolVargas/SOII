@@ -131,8 +131,8 @@ template<> struct Traits<SiFiveU_NIC>: public Traits<Ethernet>
     static const bool enabled = true;
 
     static const unsigned int ENABLED = true;
-    static const unsigned int RECEIVE_BUFFERS = 5;
-    static const unsigned int SEND_BUFFERS = 5;
+    static const unsigned int RECEIVE_BUFFERS = 10;
+    static const unsigned int SEND_BUFFERS = 10;
 
     static const bool debugged = true;
     static const bool error   = true;

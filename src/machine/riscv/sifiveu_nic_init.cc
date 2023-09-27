@@ -108,7 +108,12 @@ void SiFiveU_NIC::configure()
     db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::configure()" << endl;
     
     // Enable Full Duplex and FCS
-    GEM::apply_or_mask(R_NW_CFG, (R_NW_CFG_B_FULL_DUPLEX | R_NW_CFG_B_FCS));
+    GEM::apply_or_mask(R_NW_CFG, R_NW_CFG_B_FULL_DUPLEX);
+
+    // If configured to not bring the FCS bits to memory configure it in the GEM
+    if (!BRING_FCS_TO_MEM) {
+        GEM::apply_or_mask(R_NW_CFG, R_NW_CFG_B_REM_FCS);
+    }
 
     // Disable Promiscuous
     GEM::apply_and_mask(R_NW_CFG, ~R_NW_CFG_B_PROMISC);

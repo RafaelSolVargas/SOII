@@ -89,34 +89,57 @@ public:
 
     typedef IF<Traits<TSTP>::enabled, TSTP_Metadata, Dummy_Metadata>::Result Metadata;
 
-    // Buffers used to hold frames across a zero-copy network stack
-    //typedef _UTIL::Buffer<NIC<Ethernet>, Frame, void, Metadata> Buffer;
-
     // Contiguous Buffer
     typedef _UTIL::CBuffer Buffer;
 
     class BufferInfo 
     {
     public:
+        // Only the SiFiveU_NIC class has access to all methods of this class, the public methods
+        // allows others Internet Layers to access the data provided by this class 
+        friend class SiFiveU_NIC;
+
         typedef Simple_List<BufferInfo> List;
         typedef typename List::Element Element;
+        typedef CPU::Phy_Addr Phy_Addr;
 
-        BufferInfo(Buffer * buffer, unsigned int index, unsigned long size) : _buffer(buffer), _index(index), 
-            _size(size),  _link1(this), _link2(this) { }
-
-        Buffer * buffer() { return _buffer; }
-        unsigned int index() { return _index; }
+        /// @brief The size of the data stored in this buffer
         unsigned long size() { return _size; }
+
+        /// @brief Return the base data address of the Data stored in the Buffer
+        /// @tparam T The type of the data stored 
+        template<typename T>
+        T * data() { return reinterpret_cast<T *>(&_data_address); }
+
         Element * link1() { return &_link1; }
         Element * link() { return link1(); }
         Element * lint() { return link1(); }
         Element * link2() { return &_link2; }
         Element * lext() { return link2(); } 
 
-    private: 
-        Buffer * _buffer;
-        unsigned int _index;
-        unsigned long _size;
+    protected:
+        BufferInfo(Buffer * buffer, unsigned int index, unsigned long size) : 
+            _buffer(buffer), 
+            _index(index), 
+            _size(size), 
+            _original_size(size),
+            _data_address(Phy_Addr(buffer->address())), 
+            _link1(this),
+            _link2(this) { }
+
+    private:
+        Buffer * buffer() { return _buffer; }
+        unsigned int index() { return _index; }
+
+        void shrink(unsigned long s) { _size -= s; };
+        void shrink_left(unsigned long s) { _data_address += s; };
+
+        Buffer * _buffer; // The CBuffer in the buffers ring
+        unsigned int _index; // Index of the buffer in the Rings 
+        unsigned long _size; // The size to be showed to the higher layers
+        unsigned long _original_size; // The original size of this Buffer data in the Physical layer
+        Phy_Addr _data_address; // The address to be access by the higher layers
+
         Element _link1;
         Element _link2;
     };
