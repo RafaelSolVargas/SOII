@@ -8,6 +8,7 @@
 #include <architecture/tsc.h>
 #include <architecture/mmu.h>
 #include <network/ethernet.h>
+#include <machine/ic.h>
 
 __BEGIN_SYS
 
@@ -41,10 +42,23 @@ public:
 
     #define R_NET_STATS 0x0008
     #define R_DMA_CFG 0x010
+
+    // Transmit Status Register
     #define R_TRANSMIT_STATS 0x0014
+    #define R_TRANSMIT_STATS_B_TX_COMPLETE 1 << 5
+    
+    
     #define R_RECEIVE_Q_PTR 0x0018
     #define R_TRANSMIT_Q_PTR 0x001C
+
+    // Received Status Register
     #define R_RECEIVE_STATS 0x0020
+    #define R_RECEIVE_STATS_B_RX_COMPLETE 1 << 1
+    
+
+    #define R_INT_STATUS 0x0024
+    #define R_INT_STATUS_B_TX_COMPLETE 1 << 7
+    #define R_INT_STATUS_B_RX_COMPLETE 1 << 1
 
     // Interrupt Disabled Register
     #define R_INT_DISABLE 0x002C
@@ -75,13 +89,20 @@ public:
     struct Rx_Desc: public Desc {
         enum {
             // Others bits is for address
-            OWNER = 1 << 0,
+            OWNER = 1,
             WRAP = 1 << 1,
             END_OF_FRAME = 1 << 15,
             START_OF_FRAME = 1 << 14,
             // Bit 13 is for FCS check
             SIZE_MASK = 0x0fff
         };
+
+        /// @brief Update the size, clear the bits of control and return to the GEM
+        void clear_after_received() {
+            update_size(0);
+            phy_addr &= ~OWNER;
+            ctrl = 0;
+        }
 
         void update_size(unsigned int size) {
             ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
@@ -152,6 +173,11 @@ public:
             return (ctrl & SIZE_MASK);
         }
 
+        /// @brief Clear all bits in the descriptor except for Owner and Wrap
+        void clear_after_send() {
+            ctrl &= (OWNER | WRAP);
+        }
+
         friend Debug &operator<<(Debug &db, const Tx_Desc &d) 
         {
             db << "{" << hex << d.phy_addr << dec << ", owner=" << d.is_owner() 
@@ -219,6 +245,7 @@ class SiFiveU_NIC: public NIC<Ethernet>, private GEM
     friend class Init_Application;
 
     typedef Ethernet::BufferInfo BufferInfo;
+    typedef IC_Common::Interrupt_Id Interrupt_Id;
 
 private:
     // Transmit and Receive Ring sizes
@@ -233,8 +260,11 @@ private:
     static const unsigned int TX_DESC_BUFFER_SIZE = TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U); 
     static const unsigned int DESC_BUFFER_SIZE = RX_DESC_BUFFER_SIZE + TX_DESC_BUFFER_SIZE;
 
-public:
+protected:
     SiFiveU_NIC();
+
+public:
+    static SiFiveU_NIC* init();
     ~SiFiveU_NIC();
 
     /// @brief Allocate one or more Buffers in a Simple_List<BufferInfo> to allow the user to copy his data
@@ -251,14 +281,17 @@ public:
     /// @param size The size of the data
     int send(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
     
-    /// @brief TODO -> Descobrir objetivo desse método
-    /// @param src 
-    /// @param prot 
-    /// @param data 
-    /// @param size 
+    /// @brief Method to force the CPU to wait for an package to be received and store the data into data ptr
+    /// @param src The address that must be sending the package
+    /// @param prot The protocol that the package must be created
+    /// @param data The ptr to be copied the data incoming
+    /// @param size Unused variable
+    /// @returns The data size that actually was received
     int receive(Address * src, Protocol * prot, void * data, unsigned int size);
 
-    /// @brief Method to be called when a interruption of incoming Frame happen. Must get the Buffer and notify the Observers
+    /// @brief Method to be called when a interruption of incoming Frame happen. 
+    /// One or more frames could be stored in the buffers before the execution reach it
+    /// So this method get all the buffers that received a frame, prepare the data and and notify the Observers
     void receive();
 
     /// @brief Receive a BufferInfo * that could be a list of pre allocated Buffers and execute the sending of them
@@ -280,7 +313,8 @@ public:
     void attach(Observer * o, const Protocol & p) override {
         NIC<Ethernet>::attach(o, p);
         
-        // TODO -> Ativar receber interrupções na IC
+        // Ativa as interrupções diretamente no registrador da GEM
+        GEM::reg_value(R_NW_CTRL) |=  R_NW_CTRL_B_RX_EN;
     }
 
     void detach(Observer * o, const Protocol & p) {
@@ -288,7 +322,8 @@ public:
 
         if(!observers()) 
         {
-            // TODO -> Desativar receber interrupções na IC
+            // Desativa as interrupções diretamente no registrador da GEM
+            GEM::reg_value(R_NW_CTRL) &= ~R_NW_CTRL_B_RX_EN;
         }
     }
 
@@ -307,7 +342,9 @@ private:
     void configure();
     void configure_mac();
     void configure_int();
-    void interruption_handler();
+    void handle_interruption();
+
+    static void interruption_handler(Interrupt_Id interrupt);
 
 private:
     Configuration _configuration;
@@ -320,6 +357,7 @@ private:
     Phy_Addr _rx_ring_phy;
 
     int _tx_cur;
+    int _tx_last_unlocked;
     Tx_Desc * _tx_ring;
     Phy_Addr _tx_ring_phy;
 

@@ -55,7 +55,7 @@ public:
         }  
 
         db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
-        System::_nic = new (SYSTEM) SiFiveU_NIC();
+        System::_nic = SiFiveU_NIC::init();
 
         // Cria uma instância de observador para a NIC
         NIC_Observer * observer = new (SYSTEM) NIC_Observer();

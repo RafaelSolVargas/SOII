@@ -32,7 +32,7 @@ SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol
         unsigned int i = _tx_cur;
         for (bool locked = false; !locked;)
         {
-            for (; _tx_ring[i].ctrl & Tx_Desc::OWNER; ++i %= TX_BUFS);
+            for (; _tx_ring[i].is_owner(); ++i %= TX_BUFS);
 
             // Faz Lock no Buffer
             locked = _tx_buffers[i]->lock();
@@ -73,8 +73,9 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
         unsigned long buff_size = buffer_info->size();
         unsigned int index = buffer_info->index();
 
+        // This buffer was locked by the alloc method, will be unlock when the transmit complete
         Buffer* buffer = buffer_info->buffer();
-        Tx_Desc descriptor = _tx_ring[index];
+        Tx_Desc* descriptor = &_tx_ring[index];
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:AllocBuffer=" << buffer_info << " => (" 
                              << "buff=" << buffer << ",index=" << index << ",size=" << buff_size
@@ -83,9 +84,9 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
         db<SiFiveU_NIC>(INF) << "::buffer=" << buffer << " => " << *buffer << endl;
 
         // Atualiza o descritor
-        descriptor.update_size(buff_size + sizeof(Header));
-        descriptor.ctrl &= ~Tx_Desc::OWNER;
-        descriptor.ctrl |= Tx_Desc::LAST;
+        descriptor->update_size(buff_size + sizeof(Header));
+        descriptor->ctrl &= ~Tx_Desc::OWNER;
+        descriptor->ctrl |= Tx_Desc::LAST;
 
         // Começa o DMA
         GEM::apply_or_mask(R_NW_CTRL, R_NW_CTRL_B_TX_START);
@@ -95,13 +96,10 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
         _statistics.tx_packets++;
         _statistics.tx_bytes += buff_size;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:descriptor=" << descriptor  << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:descriptor=" << *descriptor  << endl;
 
         // Deleta o BufferInfo
         delete buffer_info;
-
-        // Unlock the buffer that was locked in the alloc method
-        buffer->unlock();
     }
 
     return size;
@@ -117,8 +115,10 @@ int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * d
     unsigned long i = _tx_cur;
     for (bool locked = false; !locked;)
     {
-        for (; !(_tx_ring[i].ctrl & Tx_Desc::OWNER); ++i %= TX_BUFS);
+        for (; !(_tx_ring[i].is_owner()); ++i %= TX_BUFS);
 
+        // Lock the buffer to use it
+        // The buffer will be unlocked when the transmit finish
         locked = _tx_buffers[i]->lock();
     }
 
@@ -156,8 +156,6 @@ int SiFiveU_NIC::send(const Address & dst, const Protocol & prot, const void * d
     _statistics.tx_packets++;
     _statistics.tx_bytes += size;
 
-    _tx_buffers[i]->unlock();
-
     return size;
 }
 
@@ -171,7 +169,7 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
     unsigned int i = _rx_cur;
     for (bool locked = false; !locked;)
     {
-        for (; !(_rx_ring[i].phy_addr & Rx_Desc::OWNER); ++i %= RX_BUFS);
+        for (; !(_rx_ring[i].is_owner()); ++i %= RX_BUFS);
 
         locked = _rx_buffers[i]->lock();
     }
@@ -195,12 +193,11 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
     // Copy the data
     memcpy(data, frame->data<void>(), size);
 
-
     _statistics.rx_packets++;
     _statistics.rx_bytes += frame_size;
 
-    // Free this buffer
-    descriptor->phy_addr &= ~Rx_Desc::OWNER;
+    descriptor->clear_after_received();
+
     buffer->unlock();
 
     return size;
@@ -208,12 +205,12 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 
 void SiFiveU_NIC::receive() 
 {
-    for(unsigned int count = RX_BUFS, i = _rx_cur; 
-                    count && !(_rx_ring[i].ctrl & Rx_Desc::OWNER); 
+    for (unsigned int count = RX_BUFS, i = _rx_cur; 
+                    count && (_rx_ring[i].is_owner()); 
                     count--, ++i %= RX_BUFS, _rx_cur = i) 
     {
         // Lock the buffer and only unlock in the free(Buffer *) 
-        if(_rx_buffers[i]->lock()) 
+        if (_rx_buffers[i]->lock()) 
         {
             Rx_Desc * descriptor = &_rx_ring[i];
             Buffer * buffer = _rx_buffers[i];
@@ -221,7 +218,7 @@ void SiFiveU_NIC::receive()
             // The internal protocol is to set the data always in the address() of CBuffer
             Frame * frame = reinterpret_cast<Frame*>(buffer->address());
 
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::descriptor[" << i << "] = " << descriptor << " => " << *descriptor << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::desc[" << i << "] => " << *descriptor << endl;
 
             // Build the buffer info to pass to higher layers
             unsigned long frame_size = descriptor->frame_size();
@@ -238,6 +235,8 @@ void SiFiveU_NIC::receive()
             // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
             if (frame->header()->src() == _configuration.address) 
             {
+                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::desc[" << i << "] => SRC == DST, releasing frame " << endl;
+
                 free(buffer_info);
 
                 continue;
@@ -262,26 +261,65 @@ bool SiFiveU_NIC::free(BufferInfo * buffer_info)
     unsigned int index = buffer_info->index();
 
     Buffer* buffer = buffer_info->buffer();
-    Rx_Desc descriptor = _rx_ring[index];
+    Rx_Desc* descriptor = &_rx_ring[index];
+
+    descriptor->clear_after_received();
 
     // Libera o lock do buffer Rx
     buffer->unlock();
 
-    // Volta o tamanho para o original e marca o buffer como propriedade da placa GEM agora
-    descriptor.update_size(sizeof(Frame));
-    descriptor.ctrl &= ~Rx_Desc::OWNER;
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::desc[" << index << "] released => " << descriptor << " => " << descriptor->is_owner() << endl;
 
     return true;  
 } 
 
-void SiFiveU_NIC::interruption_handler() 
+void SiFiveU_NIC::interruption_handler(unsigned int interrupt) 
 {
-    // Esse método precisa acessar o registrador ISR e analisar o status
+    db<SiFiveU_NIC, IC>(TRC) << "SiFiveU_NIC::interruption(int=" << interrupt << ")" << endl;
 
-    // Verificar se é um pacote chegando de rede, observar o bit 1 do registrador
+    if (!_device) {
+        return;
+    }
 
-    // Caso vá seguir o padrão de interrupção de TX, caso o DMA tenha terminado, verificar também se é esse tipo de interrupção
-    // Ao mesmo tempo alinhar junto com a função send() para liberar alguma coisa que ela precise
+    _device->handle_interruption();
+}
+
+void SiFiveU_NIC::handle_interruption() 
+{
+    // Read the ISR register, the bits read will be automatically cleared by the hardware
+    Reg32 interruptionReg = GEM::reg_value(R_INT_STATUS);
+
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_INT_STATUS=" << hex << interruptionReg << endl;
+
+    // Transmit finished 
+    if (interruptionReg & R_INT_STATUS_B_TX_COMPLETE) 
+    {
+        // Get the buffer that was sended using the last buffers that was unlocked
+        unsigned int i = (_tx_last_unlocked + 1) % TX_BUFS;
+
+        Tx_Desc* descriptor = &_tx_ring[i];
+        Buffer* buffer = _tx_buffers[i];
+
+        descriptor->clear_after_send();
+
+        buffer->unlock();
+
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC transmit completed in desc[" << i << "] => " << *descriptor << endl;
+
+        // Write 1 to signal that the transmit was finished
+        *GEM::reg(R_TRANSMIT_STATS) |= R_TRANSMIT_STATS_B_TX_COMPLETE;
+    }
+
+    // One or more frames was received and stored in our buffers
+    if (interruptionReg & R_INT_STATUS_B_RX_COMPLETE) 
+    {
+        receive();
+
+        // Write 1 to these bits to set that the receive was finished
+        GEM::reg_value(R_INT_STATUS) = R_INT_STATUS_B_RX_COMPLETE;
+        GEM::reg_value(R_RECEIVE_STATS) = R_RECEIVE_STATS_B_RX_COMPLETE;
+    }
+
 }
 
 void SiFiveU_NIC::address(const Address &) 

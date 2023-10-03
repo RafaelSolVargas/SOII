@@ -20,6 +20,9 @@ void IC::init()
     // Set all interrupt handlers to int_not()
     for(Interrupt_Id i = EXCS; i < INTS; i++)
         _int_vector[i] = &int_not;
+
+    // Permits all interrupts with non-zero priority
+    permit_all_external();
 }
 
 __END_SYS

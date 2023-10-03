@@ -137,6 +137,8 @@ template<> struct Traits<Thread>: public Traits<Build>
     static const bool trace = false;
     static const bool info = false;
 
+    static const bool debugged = false;
+
     typedef RR Criterion;
     static const unsigned int QUANTUM = 10000; // us
 };
@@ -149,11 +151,15 @@ template<> struct Traits<Scheduler<Thread>>: public Traits<Build>
 template<> struct Traits<Synchronizer>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
+
+    static const bool debugged = false;
 };
 
 template<> struct Traits<Alarm>: public Traits<Build>
 {
     static const bool visible = hysterically_debugged;
+
+    static const bool debugged = false;
 };
 
 template<> struct Traits<Address_Space>: public Traits<Build> {};

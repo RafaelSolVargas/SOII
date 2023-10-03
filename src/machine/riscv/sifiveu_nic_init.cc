@@ -9,6 +9,16 @@ __BEGIN_SYS
 
 SiFiveU_NIC * SiFiveU_NIC::_device;
 
+/// @brief Method to get an instance of the SiFiveU_NIC
+SiFiveU_NIC* SiFiveU_NIC::init() 
+{
+    if (!_device) {
+        _device = new (SYSTEM) SiFiveU_NIC();
+    } 
+
+    return _device;
+}
+
 SiFiveU_NIC::SiFiveU_NIC()
 {
     SiFiveU_NIC::_device = this;
@@ -60,6 +70,7 @@ SiFiveU_NIC::SiFiveU_NIC()
 
     // Inicializa os Tx Descriptors
     _tx_cur = 0;
+    _tx_last_unlocked = -1;
     _tx_ring_phy = _rings_buffer->phy_address() + RX_DESC_BUFFER_SIZE;
     _tx_ring = reinterpret_cast<Tx_Desc *>(tx_ring_addr);
     for (unsigned int i = 0; i < TX_BUFS; i++) 
@@ -127,8 +138,10 @@ void SiFiveU_NIC::configure()
     // Configure the DMA control register
     *GEM::reg(R_DMA_CFG) = ((sizeof(Frame) + sizeof(Header)) / 64) << 16;
 
-    // Configure the physical address of Rx and Tx rings buffers
+    // Configure the physical address of Rx ring buffer
     *GEM::reg(R_RECEIVE_Q_PTR) = _rx_ring_phy;
+
+    // Configure the physical address of Tx ring buffer
     *GEM::reg(R_TRANSMIT_Q_PTR) = _tx_ring_phy;
 
     // Enable tx and rx
@@ -202,13 +215,17 @@ SiFiveU_NIC::~SiFiveU_NIC() {
 
 void SiFiveU_NIC::configure_int() 
 {
+    // Save this instance to be called with the handler afterwards
     SiFiveU_NIC::_device = this;
 
-    // Install interruption_handler as the interruption handler
+    // Install interruption_handler method as the handler
+    IC::int_vector(IC::INT_GIGABIT_ETH, &interruption_handler);
 
-    // Enable interrupts for device
+    // Enable interrupts
+    IC::enable(IC::INT_GIGABIT_ETH);
 
     // Change priority of interrupts
+    IC::set_external_priority(IC::INT_GIGABIT_ETH, 7);
 }
 
 __END_SYS

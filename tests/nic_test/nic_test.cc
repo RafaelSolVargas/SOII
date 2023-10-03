@@ -31,7 +31,6 @@ void ethernet_test() {
     NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
 
     NIC<Ethernet>::Address src, dst;
-    NIC<Ethernet>::Protocol prot;
     char data[nic->mtu()];
 
     NIC<Ethernet>::Address self = nic->address();
@@ -43,19 +42,19 @@ void ethernet_test() {
         for(int i = 0; i < 10; i++) {
             cout << "Sending frame " << i << endl << endl;
 
-            memset(data, '0' + i, nic->mtu());
+            unsigned long size = nic->mtu() - (sizeof(long) * i);
+
+            memset(data, '0' + i, size);
 
             data[nic->mtu() - 1] = '\n';
             
-            nic->send(nic->broadcast(), 0x8888, data, nic->mtu());
+            nic->send(nic->broadcast(), 0x8888, data, size);
         }
     } else { // receiver
         cout << "I'm the receiver" << endl;
 
-        for(int i = 0; i < 10; i++) {
-            nic->receive(&src, &prot, data, nic->mtu());
-            
-            cout << "  Data[" << i << "]: "<< data << endl;
+        while (nic->statistics().rx_packets < 10) {
+            Delay(100000);
         }
     }
 

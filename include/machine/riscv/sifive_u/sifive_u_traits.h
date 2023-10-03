@@ -142,6 +142,17 @@ template<> struct Traits<SiFiveU_NIC>: public Traits<Ethernet>
 };
 
 
+template<> struct Traits<PLIC>: public Traits<Machine_Common>
+{
+    // Number of external interrupts in SiFive U
+    static const unsigned int EIRQS = 54;
+
+    // Number of NIC interrupts in SiFive U
+    static const unsigned int INT_GIGABIT_ETH = 53;
+
+};
+
+
 __END_SYS
 
 #endif

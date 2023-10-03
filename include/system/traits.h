@@ -80,6 +80,7 @@ class M95;
 class IEEE802_15_4_NIC;
 class Ethernet_NIC;
 class SiFiveU_NIC;
+class PLIC;
 
 // Transducer Mediators (i.e. sensors and actuators)
 class Transducers;
