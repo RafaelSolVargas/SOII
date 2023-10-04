@@ -1,7 +1,7 @@
 // EPOS Application Initializer
 
 #include <machine/riscv/sifive_u/sifiveu_nic.h>
-#include <machine/riscv/sifive_u/sifiveu_observer.h>
+#include <network/ip.h>
 #include <architecture.h>
 #include <utility/heap.h>
 #include <machine.h>
@@ -57,12 +57,12 @@ public:
         db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
         System::_nic = SiFiveU_NIC::init();
 
-        // Cria uma instância de observador para a NIC
-        NIC_Observer * observer = new (SYSTEM) NIC_Observer();
+        // Cria uma instância da camada IP, observadora da NIC
+        System::_ip = IP::init(System::_nic);
 
-        // Avisa para a NIC que temos uma classe observando ela pelo protocolo IP
-        System::_nic->attach(observer, Ethernet::PROTO_IP);
-        }
+        // Cadastra a camada IP como observadora da NIC pelo protocolo usado por ela
+        System::_nic->attach(System::_ip, System::_ip->PROTOCOL);
+    }
 };
 
 // Global object "init_application"  must be linked to the application (not to the system) and there constructed at first.

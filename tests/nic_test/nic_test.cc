@@ -1,54 +1,47 @@
 // EPOS NIC Test Programs
 
+#include <machine/riscv/sifive_u/sifiveu_nic.h>
 #include <machine/nic.h>
+#include <system.h>
 #include <time.h>
 #include <utility/random.h>
 #include <network/ethernet.h>
-#include <machine/riscv/sifive_u/sifiveu_nic.h>
 
 using namespace EPOS;
 
 OStream cout;
 
-template<typename Family>
-class NIC_Receiver: public NIC<Family>::Observer
-{
-private:
-    void update(typename NIC<Family>::Observed * obs,  const typename NIC<Family>::Protocol & p, typename NIC<Family>::Buffer * buf) {
-        typename Family::Frame * frame = buf->frame();
-        char * data = frame->template data<char>();
-        for(unsigned int i = 0; i < buf->size() - sizeof(typename Family::Header) - sizeof(typename Family::Trailer); i++)
-            cout << data[i];
-        cout << "\n" << endl;
-        buf->nic()->free(buf); // to return to the buffer pool;
-    }
-};
-
-
 void ethernet_test() {
     cout << "Ethernet Test" << endl;
 
-    NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
+    IP * ip = System::_ip;
 
-    NIC<Ethernet>::Address src, dst;
-    char data[nic->mtu()];
+    unsigned int mtu = 1500;
+    unsigned int pkg_quant = 10;
+    unsigned int data_size = mtu * pkg_quant;
+    char data[data_size]; // MTU * 10
 
+    NIC<Ethernet> * nic = ip->nic()
+    NIC<Ethernet>::Address dst;
     NIC<Ethernet>::Address self = nic->address();
     cout << "  MAC: " << self << endl;
 
     if(self[5] % 2) { // sender
-        cout << "I'm the sender" << endl;
+            unsigned int i = 0;
+            unsigned int j = 0;
+            for (; i < pkg_quant; i++) {
+                data[i * mtu] = (i + 1); // Set the first number as the i
 
-        for(int i = 0; i < 10; i++) {
-            cout << "Sending frame " << i << endl << endl;
+                for (; j < mtu; j++) {
+                    unsigned int index = (i + 1) * j;
 
-            unsigned long size = nic->mtu() - (sizeof(long) * i);
+                    data[index] = 0;
+                }
 
-            memset(data, '0' + i, size);
+                data[((i + 1) * mtu) - 1] = (i + 1); // Set the last as the i
+            }
 
-            data[nic->mtu() - 1] = '\n';
-            
-            nic->send(nic->broadcast(), 0x8888, data, size);
+            ip->send(nic->broadcast(), data, data_size);
         }
     } else { // receiver
         cout << "I'm the receiver" << endl;
