@@ -4,10 +4,14 @@
 #include <memory.h>
 #include <machine.h>
 #include <time.h>
+#include <utility/random.h>
+
 
 extern "C" { void _panic(); }
 
 __BEGIN_SYS
+
+OStream cout;
 
 SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int payload) 
 {
@@ -223,6 +227,25 @@ void SiFiveU_NIC::receive()
             // Build the buffer info to pass to higher layers
             unsigned long frame_size = descriptor->frame_size();
             BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
+
+            char dataIncoming[frame_size];
+
+            memcpy(dataIncoming, buffer->address(), frame_size);
+
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive:: Data => " << dataIncoming << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive:: Frame => " << *frame << endl;
+
+            char dataTwo[sizeof(Frame)];
+
+            memcpy(dataTwo, frame, sizeof(Frame));
+
+            dataTwo[sizeof(Frame) - 1] = '\n';
+
+            cout << "SiFiveU_NIC::receive:: Frame => " << dataTwo << endl;
+            
+            for (unsigned int byteIndex = 0; byteIndex < sizeof(Frame); byteIndex++) {
+                cout << (unsigned char)dataTwo[byteIndex] << ' ';
+            }
 
             // Update the data address to remove the Header
             buffer_info->shrink_left(sizeof(Header));

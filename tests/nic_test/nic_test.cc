@@ -1,6 +1,8 @@
 // EPOS NIC Test Programs
 
 #include <machine/nic.h>
+#include <network/ip.h>
+#include <system.h>
 #include <time.h>
 #include <utility/random.h>
 #include <network/ethernet.h>
@@ -30,26 +32,44 @@ void ethernet_test() {
 
     NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
 
-    NIC<Ethernet>::Address src, dst;
-    char data[nic->mtu()];
+    unsigned int mtu = ip->MTU_WO_FRAG;
+    /*unsigned int pkg_quant = 1;
+    unsigned int data_size = mtu * pkg_quant;
+    char data[data_size]; // MTU * 10 */
 
+    NIC<Ethernet> * nic = ip->nic();
+    NIC<Ethernet>::Address dst;
     NIC<Ethernet>::Address self = nic->address();
     cout << "  MAC: " << self << endl;
 
     if(self[5] % 2) { // sender
-        cout << "I'm the sender" << endl;
+        //unsigned int i = 1;
+        cout << "Preparing the data to send" << endl;
 
-        for(int i = 0; i < 10; i++) {
-            cout << "Sending frame " << i << endl << endl;
-
-            unsigned long size = nic->mtu() - (sizeof(long) * i);
-
-            memset(data, '0' + i, size);
-
-            data[nic->mtu() - 1] = '\n';
+        /* for (; i < pkg_quant; i++) {
+            memset(data, '0' + i, mtu);
             
-            nic->send(nic->broadcast(), 0x8888, data, size);
+            data[i * mtu] = (i + 1); // Set the first number as the i
+
+            data[((i + 1) * mtu) - 1] = (i + 1); // Set the last as the i
+        
+            data[mtu - 1] = '\n';
+        } */
+
+        char data[mtu];
+
+        memset(data, '0' + 5, mtu);
+        
+        data[mtu - 1] = '\n';
+        data[mtu - 2] = '9';
+
+        cout << "Data:" << data << endl;
+
+        for (unsigned int byteIndex = 0; byteIndex < mtu; byteIndex++) {
+            cout << (unsigned char)data[byteIndex] << ' ';
         }
+
+        ip->send(nic->broadcast(), data, mtu);
     } else { // receiver
         cout << "I'm the receiver" << endl;
 

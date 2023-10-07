@@ -3,6 +3,7 @@
         "Begl",
         "Cbuffer",
         "CGEM",
+        "endregion",
         "GAMECONFIGS",
         "IOTHREAD",
         "KBHANDLER",

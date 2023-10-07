@@ -60,9 +60,9 @@ public:
         // Cria uma instância de observador para a NIC
         NIC_Observer * observer = new (SYSTEM) NIC_Observer();
 
-        // Avisa para a NIC que temos uma classe observando ela pelo protocolo IP
-        System::_nic->attach(observer, Ethernet::PROTO_IP);
-        }
+        // Cadastra a camada IP como observadora da NIC pelo protocolo usado por ela
+        System::_nic->attach(System::_ip, System::_ip->IP_PROT);
+    }
 };
 
 // Global object "init_application"  must be linked to the application (not to the system) and there constructed at first.
