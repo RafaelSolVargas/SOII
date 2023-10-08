@@ -30,7 +30,7 @@ private:
 void ethernet_test() {
     cout << "Ethernet Test" << endl;
 
-    NIC<Ethernet> * nic = Traits<Ethernet>::DEVICES::Get<0>::Result::get();
+    IP * ip = System::_ip;
 
     unsigned int mtu = ip->MTU_WO_FRAG;
     /*unsigned int pkg_quant = 1;
@@ -43,31 +43,15 @@ void ethernet_test() {
     cout << "  MAC: " << self << endl;
 
     if(self[5] % 2) { // sender
-        //unsigned int i = 1;
-        cout << "Preparing the data to send" << endl;
-
-        /* for (; i < pkg_quant; i++) {
-            memset(data, '0' + i, mtu);
-            
-            data[i * mtu] = (i + 1); // Set the first number as the i
-
-            data[((i + 1) * mtu) - 1] = (i + 1); // Set the last as the i
-        
-            data[mtu - 1] = '\n';
-        } */
-
         char data[mtu];
 
         memset(data, '0' + 5, mtu);
         
         data[mtu - 1] = '\n';
         data[mtu - 2] = '9';
+        data[0] = '9';
 
         cout << "Data:" << data << endl;
-
-        for (unsigned int byteIndex = 0; byteIndex < mtu; byteIndex++) {
-            cout << (unsigned char)data[byteIndex] << ' ';
-        }
 
         ip->send(nic->broadcast(), data, mtu);
     } else { // receiver

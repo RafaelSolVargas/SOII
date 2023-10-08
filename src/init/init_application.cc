@@ -58,7 +58,7 @@ public:
         System::_nic = SiFiveU_NIC::init();
 
         // Cria uma instância de observador para a NIC
-        NIC_Observer * observer = new (SYSTEM) NIC_Observer();
+        System::_ip = IP::init(System::_nic);
 
         // Cadastra a camada IP como observadora da NIC pelo protocolo usado por ela
         System::_nic->attach(System::_ip, System::_ip->IP_PROT);

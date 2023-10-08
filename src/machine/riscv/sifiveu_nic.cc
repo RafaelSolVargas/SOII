@@ -224,28 +224,11 @@ void SiFiveU_NIC::receive()
 
             db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::desc[" << i << "] => " << *descriptor << endl;
 
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame => " << *frame << endl;
+
             // Build the buffer info to pass to higher layers
             unsigned long frame_size = descriptor->frame_size();
             BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
-
-            char dataIncoming[frame_size];
-
-            memcpy(dataIncoming, buffer->address(), frame_size);
-
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive:: Data => " << dataIncoming << endl;
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive:: Frame => " << *frame << endl;
-
-            char dataTwo[sizeof(Frame)];
-
-            memcpy(dataTwo, frame, sizeof(Frame));
-
-            dataTwo[sizeof(Frame) - 1] = '\n';
-
-            cout << "SiFiveU_NIC::receive:: Frame => " << dataTwo << endl;
-            
-            for (unsigned int byteIndex = 0; byteIndex < sizeof(Frame); byteIndex++) {
-                cout << (unsigned char)dataTwo[byteIndex] << ' ';
-            }
 
             // Update the data address to remove the Header
             buffer_info->shrink_left(sizeof(Header));
@@ -294,7 +277,8 @@ bool SiFiveU_NIC::free(BufferInfo * buffer_info)
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::desc[" << index << "] released => " << descriptor << " => " << descriptor->is_owner() << endl;
 
     return true;  
-} 
+}
+
 
 void SiFiveU_NIC::interruption_handler(unsigned int interrupt) 
 {

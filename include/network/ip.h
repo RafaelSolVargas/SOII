@@ -17,28 +17,36 @@ private:
     typedef Ethernet::Observed Observed;
     typedef Ethernet::Address Address;
 
-    // Flags
-    enum {
-        MF = 1, // More Fragments
-        DF = 2 // Don't Fragment
-    };
 
     // The Header of the fragment, the static data to identify it
     class FragmentHeader
     {
     public:
+        enum Flags {
+            DATAGRAM = 0b100,
+            MID_FRAGMENT = 0b010,
+            LAST_FRAGMENT = 0b000,
+        };
+
         FragmentHeader() {}
         FragmentHeader(unsigned short total_length, unsigned short id, unsigned char flags, const unsigned short offset) 
             : _total_length(total_length), _id(id), _flags(flags), _offset(offset) { }
 
-        bool more_fragments() { return _flags == MF; }
-        bool not_fragment() { return _flags == DF; }
+        bool more_fragments() const { return _flags == Flags::MID_FRAGMENT; }
+        bool is_last_datagram() const { return _flags == Flags::LAST_FRAGMENT; }
+        bool is_datagram() const { return _flags == Flags::DATAGRAM; }
 
         unsigned int id() { return _id; }
         unsigned int offset() { return _offset; }
 
         friend Debug & operator<<(Debug & db, const FragmentHeader & f) {
-            db << "{s=" << f._total_length << ",id=" << f._id << ",f=" << f._flags << ",i=" << f._offset << "}";
+            db << "{size=" << f._total_length 
+                << ",id=" << f._id 
+                << ",f=" << bin << f._flags 
+                << ",is_datagram=" << f.is_datagram() 
+                << ",more_frags=" << f.more_fragments() 
+                << ",last_fragment=" << f.is_last_datagram() 
+                << ",index=" << f._offset << "}";
             
             return db;
         }
@@ -50,25 +58,25 @@ private:
         unsigned int _offset :13; // Offset of this frame in the datagram
     } __attribute__((packed, may_alias));
 
+
     // Fragment Data
-    static const unsigned int MTU_FRAGMENT = NIC<Ethernet>::MTU - sizeof(FragmentHeader);
-    typedef unsigned char FragmentData[MTU_FRAGMENT];
+    static const unsigned int FRAGMENT_MTU = NIC<Ethernet>::MTU - sizeof(FragmentHeader);
+    typedef unsigned char FragmentData[FRAGMENT_MTU];
 
     /// @brief The Fragment class that will be created in the Fragmentation process
     class Fragment : public FragmentHeader 
     {
     public:
-        Fragment() {}
+        unsigned static const int DATA_SIZE = sizeof(FragmentData);
+        unsigned static const int FRAGMENT_SIZE =  DATA_SIZE + sizeof(FragmentHeader);
+
         Fragment(unsigned short total_length, unsigned short id, unsigned char flags, const unsigned short offset, 
         const void * data, unsigned int size) : FragmentHeader(total_length, id, flags, offset) 
         {
             memcpy(_data, data, size);
         }
 
-        template<typename T>
-        T * data() { return reinterpret_cast<T *>(&_data); }
-        
-        unsigned int size() { return sizeof(FragmentHeader) + sizeof(FragmentData); }
+        void * data() { return _data; }
 
         FragmentHeader * header() { return this; }
 
@@ -148,7 +156,7 @@ public:
     static const unsigned int MTU = 65535 - sizeof(Header);
 
     /// @brief Maximum data that can be send without fragmentation in one send
-    static const unsigned int MTU_WO_FRAG = MTU_FRAGMENT - sizeof(Header);
+    static const unsigned int MTU_WO_FRAG = FRAGMENT_MTU - sizeof(Header);
 protected:
     IP(NIC<Ethernet> * nic);
 

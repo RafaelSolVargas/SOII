@@ -6,15 +6,19 @@ __BEGIN_SYS
 
 void IP::update(Observed * observed, const Protocol & c, BufferInfo * d)
 {
-    Fragment * fragment = d->data<Fragment>();
-
-    db<IP>(TRC) << "IP::size_incoming= " << d->size() << endl;
-
-    unsigned int frag_size = fragment->size();
-
-    db<IP>(TRC) << "IP::frag_size= " << frag_size << endl;
+    Fragment * fragment = reinterpret_cast<Fragment *>(d->data());
 
     db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
+
+    char dataOne[Fragment::DATA_SIZE];
+
+    memcpy(dataOne, fragment->data(), Fragment::DATA_SIZE);
+
+    db<IP>(TRC) << "IP::Data Received= " << endl;
+
+    for (unsigned int byteIndex = 0; byteIndex < Fragment::DATA_SIZE; byteIndex++) {
+        db<IP>(TRC) << dataOne[byteIndex];
+    }
 
     observed->free(d);
 };
@@ -48,35 +52,25 @@ void IP::send_without_fragmentation(Address dst, const void * data, unsigned int
     // Identifier of the datagram
     unsigned int id = get_next_id();
 
-    Datagram * datagram = new (SYSTEM) Datagram(data, size);
+    // Datagram * datagram = new (SYSTEM) Datagram(data, size);
     // TODO -> Set variables of the Datagram
 
-    db<IP>(TRC) << "IP::id= " << id << endl;
+    //db<IP>(TRC) << "IP::id= " << id << endl;
 
-    db<IP>(TRC) << "IP::datagram= " << *datagram << endl;
+    // db<IP>(TRC) << "IP::datagram= " << *datagram << endl;
 
     // Total length of the datagram, the data stored in the Fragment, including the Header
-    unsigned int total_length = datagram->size();
+    //unsigned int total_length = datagram->size();
 
-    db<IP>(TRC) << "IP::total_length= " << total_length << endl;
+    //db<IP>(TRC) << "IP::total_length= " << total_length << endl;
 
-    Fragment * fragment = new (SYSTEM) Fragment(total_length, id, 1, 0, datagram, total_length);
+    Fragment * fragment = new (SYSTEM) Fragment(size, id, FragmentHeader::DATAGRAM, 0, data, size);
 
-    unsigned int frag_size = fragment->size();
-
-    db<IP>(TRC) << "IP::frag_size= " << frag_size << endl;
+    db<IP>(TRC) << "IP::frag_size= " << Fragment::DATA_SIZE << endl;
     
     db<IP>(TRC) << "IP::fragment= " << *fragment << endl;
 
-    Datagram * datagramTwo = fragment->data<Datagram>();
-
-    db<IP>(TRC) << "IP::datagram= " << *datagramTwo << endl;
-
-    char * dataTwo = datagramTwo->data<char>();
-
-    db<IP>(TRC) << "IP::datagram data= " << *dataTwo << endl;
-
-    _nic->send(dst, IP_PROT, fragment, frag_size);
+    _nic->send(dst, IP_PROT, fragment, Fragment::DATA_SIZE);
 }
 
 unsigned int IP::get_next_id() 

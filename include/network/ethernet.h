@@ -73,7 +73,7 @@ public:
         Header * header() { return this; }
 
         template<typename T>
-        T * data() { return reinterpret_cast<T *>(&_data); }
+        T * data() { return reinterpret_cast<T *>(_data); }
 
         friend Debug & operator<<(Debug & db, const Frame & f) {
             db << "{h=" << reinterpret_cast<const Header &>(f) << ",d=" << f._data << "}";
@@ -106,10 +106,7 @@ public:
         /// @brief The size of the data stored in this buffer
         unsigned long size() { return _size; }
 
-        /// @brief Return the base data address of the Data stored in the Buffer
-        /// @tparam T The type of the data stored 
-        template<typename T>
-        T * data() { return reinterpret_cast<T *>(&_data_address); }
+        void * data() { return _data_address; }
 
         Element * link1() { return &_link1; }
         Element * link() { return link1(); }
@@ -132,7 +129,7 @@ public:
         unsigned int index() { return _index; }
 
         void shrink(unsigned long s) { _size -= s; };
-        void shrink_left(unsigned long s) { _data_address += s; };
+        void shrink_left(unsigned long s) { _data_address += s; shrink(s); };
 
         Buffer * _buffer; // The CBuffer in the buffers ring
         unsigned int _index; // Index of the buffer in the Rings 
