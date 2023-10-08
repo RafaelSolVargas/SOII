@@ -311,6 +311,8 @@ public:
 
     // Método para adicionar um observador para ser notificado pela NIC
     void attach(Observer * o, const Protocol & p) override {
+        db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::attached(o=" << o << ",p=" << p << ")" << endl;
+
         NIC<Ethernet>::attach(o, p);
         
         // Ativa as interrupções diretamente no registrador da GEM

@@ -58,6 +58,7 @@ private:
     static CBuffer * _Cbuffer;
     static NonCBuffer * _NCbuffer;
 
+    static SiFiveU_NIC * _nic;
 };
 
 __END_SYS

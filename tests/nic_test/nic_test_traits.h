@@ -52,7 +52,7 @@ template<> struct Traits<Observers>: public Traits<Build>
 {
     // Some observed objects are created before initializing the Display
     // Enabling debug may cause trouble in some Machines
-    static const bool debugged = false;
+    static const bool debugged = true;
 };
 
 
@@ -147,6 +147,7 @@ template<> struct Traits<Scheduler<Thread>>: public Traits<Build>
 {
     static const bool debugged = Traits<Thread>::trace_idle || hysterically_debugged;
 };
+
 
 template<> struct Traits<Synchronizer>: public Traits<Build>
 {

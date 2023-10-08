@@ -1,7 +1,7 @@
 // EPOS Application Initializer
 
 #include <machine/riscv/sifive_u/sifiveu_nic.h>
-#include <machine/riscv/sifive_u/sifiveu_observer.h>
+#include <network/ip.h>
 #include <architecture.h>
 #include <utility/heap.h>
 #include <machine.h>

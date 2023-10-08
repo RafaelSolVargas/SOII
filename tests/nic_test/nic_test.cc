@@ -1,31 +1,16 @@
 // EPOS NIC Test Programs
 
+#include <machine/riscv/sifive_u/sifiveu_nic.h>
 #include <machine/nic.h>
 #include <network/ip.h>
 #include <system.h>
 #include <time.h>
 #include <utility/random.h>
 #include <network/ethernet.h>
-#include <machine/riscv/sifive_u/sifiveu_nic.h>
 
 using namespace EPOS;
 
 OStream cout;
-
-template<typename Family>
-class NIC_Receiver: public NIC<Family>::Observer
-{
-private:
-    void update(typename NIC<Family>::Observed * obs,  const typename NIC<Family>::Protocol & p, typename NIC<Family>::Buffer * buf) {
-        typename Family::Frame * frame = buf->frame();
-        char * data = frame->template data<char>();
-        for(unsigned int i = 0; i < buf->size() - sizeof(typename Family::Header) - sizeof(typename Family::Trailer); i++)
-            cout << data[i];
-        cout << "\n" << endl;
-        buf->nic()->free(buf); // to return to the buffer pool;
-    }
-};
-
 
 void ethernet_test() {
     cout << "Ethernet Test" << endl;
