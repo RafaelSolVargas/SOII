@@ -4,24 +4,6 @@
 
 __BEGIN_SYS
 
-void IP::update(Observed * observed, const Protocol & c, BufferInfo * d)
-{
-    Fragment * fragment = reinterpret_cast<Fragment *>(d->data());
-
-    db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
-
-    char dataOne[Fragment::DATA_SIZE];
-
-    memcpy(dataOne, fragment->data(), Fragment::DATA_SIZE);
-
-    db<IP>(TRC) << "IP::Data Received= " << endl;
-
-    for (unsigned int byteIndex = 0; byteIndex < Fragment::DATA_SIZE; byteIndex++) {
-        db<IP>(TRC) << dataOne[byteIndex];
-    }
-
-    observed->free(d);
-};
 
 void IP::send(Address dst, const void * data, unsigned int size) 
 {
@@ -45,49 +27,72 @@ void IP::send_without_fragmentation(Address dst, const void * data, unsigned int
 {
     db<IP>(TRC) << "IP::send_wo_frag(dst= " << dst << ",size=" << size << ",data=" << data << ")" << endl;
  
-    // Calculate the required size, including the space for creating and fragment and a datagram
+    // Calculate the required size, adding the space for creating and fragment and a datagram
     unsigned int required_size = size + sizeof(FragmentHeader) + sizeof(Header);
 
+    // Preallocate an buffer to use it for sending the package 
     NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(dst, IP_PROT, required_size);
 
     // Identifier of the datagram
     unsigned int package_id = get_next_id();
 
-    db<IP>(TRC) << "IP::Creating Fragment in = " << buffer->data() << endl;
-    db<IP>(TRC) << "IP::Buffer size = " << buffer->size() << endl;
-
     // Create an fragment without copying the data directly
     Fragment * fragment = new (buffer->data()) Fragment(size, package_id, FragmentFlags::DATAGRAM, 0);
 
-    db<IP>(TRC) << "IP::Creating Datagram in = " << fragment->data() << endl;
-    db<IP>(TRC) << "IP::Fragment size = " << fragment->FRAGMENT_SIZE << endl;
-    db<IP>(TRC) << "IP::Fragment Data size = " << fragment->DATA_SIZE << endl;
-
-    // Creates an empty datagram to use the placeholder for the data
-    Datagram * datagram = new (fragment->data()) Datagram();
-
-    db<IP>(TRC) << "IP::Copying the data to = " << datagram->data() << endl;
-    
-    // Copy the data into the datagram
-    memcpy(datagram->data(), data, size);
+    // Creates the datagram inside the fragment passing all the parameters
+    new (fragment->data()) Datagram(_nic->address(), dst, IP_PROT, size, package_id, FragmentFlags::DATAGRAM, data, size);
 
     _nic->send(buffer);
-
-    _nic->send(dst, IP_PROT, fragment, size);
 }
 
-
-/* void send_without_fragmentation(Address dst, const void * data, unsigned int size) 
+void IP::update(Observed * observed, const Protocol & c, BufferInfo * d)
 {
-    db<IP>(TRC) << "IP::send_wo_frag(dst= " << dst << ",size=" << size << ",data=" << data << ")" << endl;
- 
-    // Identifier of the datagram
-    unsigned int package_id = get_next_id();
+    Fragment * fragment = reinterpret_cast<Fragment *>(d->data());
 
-    Fragment * fragment = new (SYSTEM) Fragment(size, package_id, FragmentFlags::DATAGRAM, 0, data, size);
+    db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
 
-    _nic->send(dst, IP_PROT, fragment, size);
-} */
+    if (fragment->is_datagram()) 
+    {
+        Datagram* datagram = reinterpret_cast<Datagram *>(fragment->data());
+
+        handle_datagram(datagram);
+    } 
+    else 
+    {
+        handle_fragmentation(fragment);
+    }
+
+    observed->free(d);
+};
+
+void IP::handle_datagram(Datagram * datagram) 
+{
+    // Instead of this, read the payload from the Datagram
+    unsigned int payload = 1500;
+
+    char receivedData[payload];
+
+    memcpy(receivedData, datagram->data(), payload);
+
+    db<IP>(TRC) << "IP::Datagram Data Received= " << endl;
+
+    for (unsigned int index = 0; index < payload; index++) 
+    {
+        db<IP>(TRC) << receivedData[index];
+    }
+}
+
+void IP::handle_fragmentation(Fragment * fragment) 
+{
+    if (fragment->is_last_datagram()) 
+    {
+
+    } 
+    else // Mid Fragment
+    {
+
+    }
+}
 
 unsigned int IP::get_next_id() 
 {

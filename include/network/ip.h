@@ -61,7 +61,7 @@ private:
     } __attribute__((packed, may_alias));
 
 
-    // Fragment Data
+    /// @brief Maximum data that can be transfer in each Fragment 
     static const unsigned int FRAGMENT_MTU = NIC<Ethernet>::MTU - sizeof(FragmentHeader);
     typedef unsigned char FragmentData[FRAGMENT_MTU];
 
@@ -97,38 +97,63 @@ private:
 
     class Header 
     {
-        public: 
-            Header() {
-                a = 1;
-                b = 2;
-                c = 3;
-                e = 4;
-                e = 5;
-                f = 6;
-            }
+        protected:
+            typedef Ethernet::Address Address;
+            typedef Ethernet::Protocol Protocol;
 
-            friend Debug & operator<<(Debug & db, const Header & f) {
-                db << "{a=" << f.a << ",b=" << f.b << ",c=" << f.c << ",d=" << f.d << ",e=" << f.e << ",f=" << f.f << "}";
+        public: 
+            static const unsigned int SERVICE_TYPE = 0;
+            static const unsigned int VERSION = 4;
+            static const unsigned int HEADER_LENGTH = 5;
+            static const unsigned int TIME_TO_LIVE = 10;
+
+            Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int size, 
+            unsigned int id, const FragmentFlags & flags) 
+            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _length(size), _id(id), _flags(flags), 
+            _offset(0), _ttl(TIME_TO_LIVE), _protocol(prot),  _checksum(0), _src(src), _dst(dst)
+            { }
+
+            friend Debug & operator<<(Debug & db, const Header & h) {
+                db << "{ihl=" << h._ihl
+                << ",ver=" << h._version
+                << ",tos=" << h._service_type
+                << ",len=" << h._length
+                << ",id="  << h._id
+                << ",flg=" << h._flags
+                << ",off=" << h._offset
+                << ",ttl=" << h._ttl
+                << ",pro=" << h._protocol
+                << ",chk=" << h._checksum
+                << ",from=" << h._src
+                << ",to=" << h._dst
+                << "}";
 
                 return db;
             }
-     
-            unsigned int a;
-            unsigned int b;
-            unsigned int c;
-            unsigned int d;
-            unsigned int e;
-            unsigned int f;
-    };
+
+        protected: 
+            unsigned char _ihl:4; /// IP Header Length
+            unsigned char _version:4; /// IP Version
+            unsigned char _service_type:8; /// Type of Service
+            unsigned short _length:16;     /// Total length of datagram, header + data
+            unsigned short _id:16;     /// Datagram ID
+            unsigned short _flags:3; /// Flags (Reserved, DF, MF)
+            unsigned short _offset:13;     /// Fragment offset
+            unsigned char _ttl:8; /// Time To Live
+            Protocol _protocol; /// Payload Protocol (RFC 1700)
+            unsigned short _checksum:16; /// Header checksum (RFC 1071)
+            Address _src; /// Source IP address
+            Address _dst; /// Destination IP address
+
+    } __attribute__((packed, may_alias));
 
 
 public:
     class Datagram : public Header 
     {
         public:
-            Datagram() : Header() { }
-            
-            Datagram(const void * data, unsigned int data_size) : Header(), _data_size(data_size)
+            Datagram(const Address & src, const Address & dst, const Protocol & prot, unsigned int size, unsigned int id, const FragmentFlags & flags, 
+            const void * data, unsigned int data_size) : Header(src, dst, prot, size, id, flags)
             { 
                 memcpy(_data, data, data_size);
             }
@@ -136,16 +161,16 @@ public:
             Header * header() { return this; }
 
             void * data() { return _data; }
-            unsigned int data_size() { return _data_size; }
+            unsigned int data_size() { return _length; }
 
             friend Debug & operator<<(Debug & db, const Datagram & f) {
-                db << "{a=" << reinterpret_cast<const Header &>(f) << ",s=" << f._data_size << ",d=" << *f._data << "}";
+                db << "{datagram=" << reinterpret_cast<const Header &>(f) << "}";
 
                 return db;
             }
 
         protected:
-            unsigned char _data_size;
+            /// @brief Placeholder for the data stored in the Datagram
             unsigned char _data[1];
     };
 
@@ -153,7 +178,7 @@ public:
     static const unsigned int MTU = 65535 - sizeof(Header);
 
     /// @brief Maximum data that can be send without fragmentation in one send
-    static const unsigned int MTU_WO_FRAG = FRAGMENT_MTU - sizeof(Header);
+    static const unsigned int MTU_WO_FRAG = NIC<Ethernet>::MTU - sizeof(FragmentHeader) - sizeof(Header);
 protected:
     IP(NIC<Ethernet> * nic);
 
@@ -165,6 +190,10 @@ public:
     void send(Address dst, const void * data, unsigned int size);
 
     void update(Observed * observed, const Protocol & c, BufferInfo * d) override;
+
+    void handle_fragmentation(Fragment * fragment);
+
+    void handle_datagram(Datagram * datagram);
 
     NIC<Ethernet> * nic() { return _nic; }
 

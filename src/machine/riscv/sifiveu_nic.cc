@@ -11,8 +11,6 @@ extern "C" { void _panic(); }
 
 __BEGIN_SYS
 
-OStream cout;
-
 SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int payload) 
 {
     db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::alloc(src=" << _configuration.address
@@ -55,7 +53,7 @@ SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol
         unsigned long size_sended = (size > max_data) ? max_data : size;
 
         // Inicializa o Frame
-        Frame * frame = new (buffer->address()) Frame(_configuration.address, dst, prot);
+        new (buffer->address()) Frame(_configuration.address, dst, prot);
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_DESC[" << i << "] => " << *descriptor << endl;
 

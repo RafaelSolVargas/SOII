@@ -27,7 +27,7 @@ void ip_test_datagram() {
     IP * ip = System::_ip;
 
     unsigned const int MTU = IP::MTU_WO_FRAG;
-    unsigned const int DATAGRAMS_QUANT = 1;
+    unsigned const int DATAGRAMS_QUANT = 10;
     
     char data[MTU];
 
@@ -39,7 +39,7 @@ void ip_test_datagram() {
         cout << " I'm the sender " << endl;
 
         for (unsigned int i = 0; i < DATAGRAMS_QUANT; i++) {
-            memset(data, '0' + 1, MTU);
+            memset(data, '0' + i, MTU);
             
             data[0] = '0' + 9;
             data[MTU - 2] = '0' + 9;
