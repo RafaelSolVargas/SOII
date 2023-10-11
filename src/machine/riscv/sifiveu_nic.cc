@@ -299,14 +299,18 @@ void SiFiveU_NIC::handle_interruption()
 {
     // Read the ISR register, the bits read will be automatically cleared by the hardware
     Reg32 interruptionReg = GEM::reg_value(R_INT_STATUS);
+    Reg32 transmitStatsReg = GEM::reg_value(R_TRANSMIT_STATS);
+
 
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_INT_STATUS=" << hex << interruptionReg << endl;
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_RECEIVE_STATS=" << bin << GEM::reg_value(R_RECEIVE_STATS) << endl;
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_TRANSMIT_STATS=" << bin << GEM::reg_value(R_TRANSMIT_STATS) << endl;
 
-    // Transmit finished 
-    if (interruptionReg & R_INT_STATUS_B_TX_COMPLETE) 
+    // Transmit finished called by the 
+    if ((interruptionReg & R_INT_STATUS_B_TX_COMPLETE) || transmitStatsReg & R_TRANSMIT_STATS_B_TX_COMPLETE) 
     {
         // Get the buffer that was sended using the last buffers that was unlocked
-        unsigned int i = (_tx_last_unlocked + 1) % TX_BUFS;
+        unsigned int i = (++_tx_last_unlocked) % TX_BUFS;
 
         Tx_Desc* descriptor = &_tx_ring[i];
         Buffer* buffer = _tx_buffers[i];
@@ -317,9 +321,18 @@ void SiFiveU_NIC::handle_interruption()
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC transmit completed in desc[" << i << "] => " << *descriptor << endl;
 
-        // Write 1 to signal that the transmit was finished
-        *GEM::reg(R_TRANSMIT_STATS) |= R_TRANSMIT_STATS_B_TX_COMPLETE;
-    }
+        // Write 1 to signal that the transmit was finished in the Interrupt Register
+        if (interruptionReg & R_INT_STATUS_B_TX_COMPLETE) 
+        {
+            *GEM::reg(R_INT_STATUS) |= R_INT_STATUS_B_TX_COMPLETE;
+        }
+
+        // Write 1 to signal that the transmit was finished in the Transmit Status
+        if (transmitStatsReg & R_TRANSMIT_STATS_B_TX_COMPLETE) 
+        {
+            *GEM::reg(R_TRANSMIT_STATS) |= R_TRANSMIT_STATS_B_TX_COMPLETE;
+        }
+    } 
 
     // One or more frames was received and stored in our buffers
     if (interruptionReg & R_INT_STATUS_B_RX_COMPLETE) 
