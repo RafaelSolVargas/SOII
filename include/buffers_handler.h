@@ -1,3 +1,6 @@
+#ifndef __buffers_handler_h
+#define __buffers_handler_h
+
 #include <utility/nic_buffers.h>
 #include <system.h>
 
@@ -121,8 +124,10 @@ public:
     };
 
 private:
-    static CBuffer * Cbuffer() { return System::_Cbuffer; } // From System
-    static NonCBuffer * NCbuffer() { return System::_NCbuffer; } // From System
+    static CBuffer * Cbuffer();
+    static NonCBuffer * NCbuffer();
 };
 
 __END_SYS
+
+#endif

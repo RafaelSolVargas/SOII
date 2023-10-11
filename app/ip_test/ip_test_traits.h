@@ -14,7 +14,7 @@ template<> struct Traits<Build>: public Traits_Tokens
     static const unsigned int MACHINE = RISCV;
     static const unsigned int MODEL = SiFive_U;
     static const unsigned int CPUS = 1;
-    static const unsigned int NODES = 1; // (> 1 => NETWORKING)
+    static const unsigned int NODES = 2; // (> 1 => NETWORKING)
     static const unsigned int EXPECTED_SIMULATION_TIME = 60; // s (0 => not simulated)
 
     // Default flags
@@ -30,7 +30,7 @@ template<> struct Traits<Debug>: public Traits<Build>
     static const bool error   = true;
     static const bool warning = true;
     static const bool info    = true;
-    static const bool trace   = false;
+    static const bool trace   = true;
 };
 
 template<> struct Traits<Lists>: public Traits<Build>
@@ -52,7 +52,7 @@ template<> struct Traits<Observers>: public Traits<Build>
 {
     // Some observed objects are created before initializing the Display
     // Enabling debug may cause trouble in some Machines
-    static const bool debugged = false;
+    static const bool debugged = true;
 };
 
 
@@ -98,6 +98,7 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int NET_BUFFERS_CLIENTS = 1;
 };
 
+
 template<> struct Traits<System>: public Traits<Build>
 {
     static const bool multithread = (Traits<Application>::MAX_THREADS > 1);
@@ -113,14 +114,16 @@ template<> struct Traits<System>: public Traits<Build>
     static const unsigned int STACK_SIZE = Traits<Machine>::STACK_SIZE;
     static const unsigned int HEAP_SIZE = (Traits<Application>::MAX_THREADS + 1) * Traits<Application>::STACK_SIZE;
 
-    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 1500; // 1500 bytes
+    static const unsigned int CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 3000; // 3000 bytes
     static const unsigned int NON_CONTIGUOUS_BUFFER_SIZE = Traits<Application>::NET_BUFFERS_CLIENTS * 65536; // 64 Kb
 };
 
 template<> struct Traits<NicBuffers>: public Traits<Build>
 {
-    static const bool error   = false;
-    static const bool warning = false;
+    static const bool debugged = false;
+
+    static const bool error   = true;
+    static const bool warning = true;
     static const bool info    = true;
     static const bool trace   = true;
 };
@@ -134,6 +137,8 @@ template<> struct Traits<Thread>: public Traits<Build>
     static const bool trace = false;
     static const bool info = false;
 
+    static const bool debugged = false;
+
     typedef RR Criterion;
     static const unsigned int QUANTUM = 10000; // us
 };
@@ -143,23 +148,22 @@ template<> struct Traits<Scheduler<Thread>>: public Traits<Build>
     static const bool debugged = Traits<Thread>::trace_idle || hysterically_debugged;
 };
 
+
 template<> struct Traits<Synchronizer>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;
+
+    static const bool debugged = false;
 };
 
 template<> struct Traits<Alarm>: public Traits<Build>
 {
     static const bool visible = hysterically_debugged;
+
+    static const bool debugged = false;
 };
 
-template<> struct Traits<Address_Space>: public Traits<Build> 
-{
-    static const bool error   = false;
-    static const bool warning = false;
-    static const bool info    = false;
-    static const bool trace   = false;
-};
+template<> struct Traits<Address_Space>: public Traits<Build> {};
 
 template<> struct Traits<Segment>: public Traits<Build> {};
 

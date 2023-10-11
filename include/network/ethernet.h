@@ -72,8 +72,7 @@ public:
 
         Header * header() { return this; }
 
-        template<typename T>
-        T * data() { return reinterpret_cast<T *>(_data); }
+        void * data() { return _data; }
 
         friend Debug & operator<<(Debug & db, const Frame & f) {
             db << "{h=" << reinterpret_cast<const Header &>(f) << ",d=" << f._data << "}";

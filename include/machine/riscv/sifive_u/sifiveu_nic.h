@@ -337,7 +337,6 @@ public:
     bool drop(Buffer * buf) { return true; } // after send, while still in the working queues, not supported by many NICs
 
     /// @brief Returns an instance of this class
-    /// @return 
     static SiFiveU_NIC * get() { return _device; }
 
 private:

@@ -21,6 +21,6 @@ IP* IP::init(NIC<Ethernet> * nic)
     return _ip;
 }
 
-IP::IP(NIC<Ethernet> * nic) : _nic(nic) { }
+IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic)) { }
 
 __END_SYS

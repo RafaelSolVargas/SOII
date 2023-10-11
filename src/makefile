@@ -2,7 +2,7 @@
 
 include	../makedefs
 
-SUBDIRS := utility architecture machine api setup boot system init
+SUBDIRS := utility architecture machine api setup boot system init network
 
 all:		$(SUBDIRS)
 
