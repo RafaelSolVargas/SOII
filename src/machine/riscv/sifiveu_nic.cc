@@ -78,18 +78,22 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
 {
     unsigned int size = 0;
 
+    // Variable
+    unsigned int last_index = 0;
+    Tx_Desc* descriptor = &_tx_ring[last_index];
+
     for (BufferInfo::Element *el = buffer_info->link(); el; el = el->next())
     {
         buffer_info = el->object();
         unsigned long buff_size = buffer_info->size();
-        unsigned int index = buffer_info->index();
+        last_index = buffer_info->index();
 
         // This buffer was locked by the alloc method, will be unlock when the transmit complete
-        Tx_Desc* descriptor = &_tx_ring[index];
-        Buffer* buffer = _tx_buffers[index];
+        descriptor = &_tx_ring[last_index];
+        Buffer* buffer = _tx_buffers[last_index];
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::send:AllocBuffer=" << buffer_info << " => (" 
-                             << "buff=" << buffer << ",index=" << index << ",size=" << buff_size
+                             << "buff=" << buffer << ",index=" << last_index << ",size=" << buff_size
                              << ")" << endl;
 
         // Atualiza o descritor
@@ -97,7 +101,7 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
         descriptor->ctrl &= ~Tx_Desc::OWNER; 
         descriptor->ctrl |= Tx_Desc::LAST;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_DESC[" << index << "] => " << _tx_ring[index] << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::TX_DESC[" << last_index << "] => " << _tx_ring[last_index] << endl;
 
         // Start the DMA
         *GEM::reg(R_NW_CTRL) |= R_NW_CTRL_B_TX_START;
@@ -110,6 +114,10 @@ int SiFiveU_NIC::send(SiFiveU_NIC::BufferInfo * buffer_info)
         // Deleta o BufferInfo
         delete buffer_info;
     }
+
+    // Wait for the last buffer to be sended, it will protect from users deleting the data
+    // allocated inside the buffers before the transmit has actually finish
+    while (!(descriptor->is_owner()));
 
     return size;
 }
