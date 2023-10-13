@@ -28,7 +28,7 @@ protected:
     void end_atomic() { Thread::unlock(); }
 
     void sleep() { Thread::sleep(&_queue); }
-    void wakeup() { Thread::wakeup(&_queue); }
+    void wakeup(bool disablePreemptive = false) { Thread::wakeup(&_queue, disablePreemptive); }
     void wakeup_all() { Thread::wakeup_all(&_queue); }
 
 protected:
@@ -57,7 +57,7 @@ public:
     ~Semaphore();
 
     void p();
-    void v();
+    void v(bool disablePreemptive = false);
 
 private:
     volatile long _value;
@@ -95,12 +95,13 @@ private:
 class Semaphore_Handler: public Handler
 {
 public:
-    Semaphore_Handler(Semaphore * h) : _handler(h) {}
+    Semaphore_Handler(Semaphore * h, bool disablePreemptive = false) : _disablePreemptive(disablePreemptive), _handler(h) { }
     ~Semaphore_Handler() {}
 
-    void operator()() { _handler->v(); }
+    void operator()() { _handler->v(_disablePreemptive); }
 
 private:
+    bool _disablePreemptive;
     Semaphore * _handler;
 };
 

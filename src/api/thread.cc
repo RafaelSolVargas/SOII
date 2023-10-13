@@ -262,7 +262,7 @@ void Thread::sleep(Queue * q)
 }
 
 
-void Thread::wakeup(Queue * q)
+void Thread::wakeup(Queue * q, bool disablePreemptive)
 {
     db<Thread>(TRC) << "Thread::wakeup(running=" << running() << ",q=" << q << ")" << endl;
 
@@ -274,7 +274,7 @@ void Thread::wakeup(Queue * q)
         t->_waiting = 0;
         _scheduler.resume(t);
 
-        if(preemptive)
+        if(preemptive && !disablePreemptive)
             reschedule();
     }
 }

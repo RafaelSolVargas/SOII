@@ -104,7 +104,7 @@ protected:
     static bool locked() { return CPU::int_disabled(); }
 
     static void sleep(Queue * q);
-    static void wakeup(Queue * q);
+    static void wakeup(Queue * q, bool disablePreemptive = false);
     static void wakeup_all(Queue * q);
 
     static void reschedule();

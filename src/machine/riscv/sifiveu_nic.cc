@@ -287,7 +287,12 @@ void SiFiveU_NIC::receive()
 
 
         // Signals the callbacks thread that an package arrived
-        _semaphore->v();
+        // Create an Semaphore handler to release the CallbackThread, the boolean will disable the preemptive behavior of 
+        // the Thread, forcing the execution of the callback to be after the interruption be handled
+        Semaphore_Handler * sem_handler = new (SYSTEM) Semaphore_Handler(_semaphore, true);
+
+        // Configure the handler to be called in the minimum value that is not now, only one time
+        new (SYSTEM) Alarm(2000, sem_handler, 1);
     }
 }
 

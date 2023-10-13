@@ -27,13 +27,13 @@ void Semaphore::p()
 }
 
 
-void Semaphore::v()
+void Semaphore::v(bool disablePreemptive)
 {
     db<Synchronizer>(TRC) << "Semaphore::v(this=" << this << ",value=" << _value << ")" << endl;
 
     begin_atomic();
     if(finc(_value) < 0)
-        wakeup();
+        wakeup(disablePreemptive);
     end_atomic();
 }
 
