@@ -10,7 +10,7 @@
 
 __BEGIN_SYS
 
-class IP: public NIC<Ethernet>::Observer
+class IP
 {
 private:
     /// @brief Buffer received by the NIC
@@ -189,23 +189,27 @@ public:
 
     void send(Address dst, const void * data, unsigned int size);
 
-    void update(Observed * observed, const Protocol & c, BufferInfo * d) override;
+    SiFiveU_NIC * nic() { return _nic; }
 
+private:
+    /// @brief Class method to be registered as callback in the SiFiveU_NIC, will only call the same method in member function
+    static void class_nic_callback(BufferInfo * bufferInfo);
+
+    /// @brief Will receive the buffers that arrive in the Ethernet 
+    /// @param bufferInfo The buffer structure
+    void nic_callback(BufferInfo * bufferInfo);
+    
+    void send_with_fragmentation(Address dst, const void * data, unsigned int size);
+    void send_without_fragmentation(Address dst, const void * data, unsigned int size);
     void handle_fragmentation(Fragment * fragment);
-
     void handle_datagram(Datagram * datagram);
 
-    SiFiveU_NIC * nic() { return _nic; }
+    static unsigned int get_next_id();
 
 private:
     static unsigned int _datagram_count;
     static IP * _ip;
     SiFiveU_NIC * _nic;
-
-    void send_with_fragmentation(Address dst, const void * data, unsigned int size);
-    void send_without_fragmentation(Address dst, const void * data, unsigned int size);
-
-    static unsigned int get_next_id();
 };
 
 __END_SYS

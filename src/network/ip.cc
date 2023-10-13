@@ -4,6 +4,28 @@
 
 __BEGIN_SYS
 
+void IP::class_nic_callback(BufferInfo * bufferInfo) 
+{
+    _ip->nic_callback(bufferInfo);
+}
+
+void IP::nic_callback(BufferInfo * bufferInfo) 
+{
+    Fragment * fragment = reinterpret_cast<Fragment *>(bufferInfo->data());
+
+    db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
+
+    if (fragment->is_datagram()) 
+    {
+        Datagram* datagram = reinterpret_cast<Datagram *>(fragment->data());
+
+        handle_datagram(datagram);
+    } 
+    else 
+    {
+        handle_fragmentation(fragment);
+    }
+}
 
 void IP::send(Address dst, const void * data, unsigned int size) 
 {
@@ -44,26 +66,6 @@ void IP::send_without_fragmentation(Address dst, const void * data, unsigned int
 
     _nic->send(buffer);
 }
-
-void IP::update(Observed * observed, const Protocol & c, BufferInfo * d)
-{
-    Fragment * fragment = reinterpret_cast<Fragment *>(d->data());
-
-    db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
-
-    if (fragment->is_datagram()) 
-    {
-        Datagram* datagram = reinterpret_cast<Datagram *>(fragment->data());
-
-        handle_datagram(datagram);
-    } 
-    else 
-    {
-        handle_fragmentation(fragment);
-    }
-
-    observed->free(d);
-};
 
 void IP::handle_datagram(Datagram * datagram) 
 {

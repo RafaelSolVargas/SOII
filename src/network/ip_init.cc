@@ -15,7 +15,11 @@ IP* IP::init(NIC<Ethernet> * nic)
 {
     if (!_ip) 
     {
+        // Initialize the IP
         _ip = new (SYSTEM) IP(nic);
+
+        // Configure the callback to be called when the NIC receive frames
+        _ip->_nic->attach_callback(&class_nic_callback);
     }
 
     return _ip;

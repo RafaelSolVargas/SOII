@@ -15,7 +15,7 @@ void show_stats()
 {
     SiFiveU_NIC * nic = SiFiveU_NIC::init();
 
-    NIC<Ethernet>::Statistics stat = nic()->statistics();
+    NIC<Ethernet>::Statistics stat = nic->statistics();
     cout << "Statistics\n"
          << "Tx Packets: " << stat.tx_packets << "\n"
          << "Tx Bytes:   " << stat.tx_bytes << "\n"
