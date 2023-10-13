@@ -8,16 +8,31 @@
 __BEGIN_SYS
 
 SiFiveU_NIC * SiFiveU_NIC::_device;
+Semaphore * SiFiveU_NIC::_semaphore;
+Thread * SiFiveU_NIC::_callbacks_caller_thread;
+bool SiFiveU_NIC::_deleted;
 
 /// @brief Method to get an instance of the SiFiveU_NIC
 SiFiveU_NIC* SiFiveU_NIC::init() 
 {
-    if (!_device) {
+    if (!_device) 
+    {
+        // Initialize the NIC
         _device = new (SYSTEM) SiFiveU_NIC();
+
+        // Flag to delete the Callbacks Thread
+        _deleted = false;
+
+        // Create the semaphore for the Thread
+        _semaphore = new (SYSTEM) Semaphore(0);
+
+        // Create the thread as Ready, it will be blocked in first execution
+        _callbacks_caller_thread = new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &callbacks_handler);
     } 
 
     return _device;
 }
+
 
 SiFiveU_NIC::SiFiveU_NIC()
 {

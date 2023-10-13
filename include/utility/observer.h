@@ -204,6 +204,7 @@ public:
         db<Observers>(TRC) << "~Data_Observed(this=" << this << ")" << endl;
     }
 
+    /// @brief IF YOU ARE USING THE RISCV NIC, DO NOT USE THIS METHOD
     virtual void attach(Data_Observing<D, C> * o, const C & c) {
         db<Observers>(TRC) << "Data_Observed::attach(obs=" << o << ",cond=" << c << ")" << endl;
 
@@ -211,15 +212,17 @@ public:
         _observers.insert(&o->_link);
     }
 
+    /// @brief IF YOU ARE USING THE RISCV NIC, DO NOT USE THIS METHOD
     virtual void detach(Data_Observing<D, C> * o, const C & c) {
         db<Observers>(TRC) << "Data_Observed::detach(obs=" << o << ",cond=" << c << ")" << endl;
 
         _observers.remove(&o->_link);
     }
 
-    // Method to Observers to return the data to the Observed deallocate it
+    /// @brief IF YOU ARE USING THE RISCV NIC, DO NOT USE THIS METHOD
     virtual bool free(D * d) = 0;
 
+    /// @brief IF YOU ARE USING THE RISCV NIC, DO NOT USE THIS METHOD
     virtual bool notify(const C & c, D * d) {
         bool notified = false;
 

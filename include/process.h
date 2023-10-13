@@ -8,6 +8,7 @@
 #include <utility/queue.h>
 #include <utility/handler.h>
 #include <scheduler.h>
+#include <machine/riscv/riscv_timer.h>
 
 extern "C" { void __exit(); }
 

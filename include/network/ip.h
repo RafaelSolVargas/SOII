@@ -195,7 +195,7 @@ public:
 
     void handle_datagram(Datagram * datagram);
 
-    NIC<Ethernet> * nic() { return _nic; }
+    SiFiveU_NIC * nic() { return _nic; }
 
 private:
     static unsigned int _datagram_count;

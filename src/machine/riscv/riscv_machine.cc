@@ -37,6 +37,8 @@ void Machine::reboot()
     }
 }
 
+const UUID & Machine::uuid() { return System::info()->bm.uuid; }
+
 void Machine::poweroff()
 {
     db<Machine>(WRN) << "Machine::poweroff()" << endl;

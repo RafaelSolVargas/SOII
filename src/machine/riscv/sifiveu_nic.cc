@@ -11,6 +11,25 @@ extern "C" { void _panic(); }
 
 __BEGIN_SYS
 
+void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *)) 
+{
+    CallbacksWrapper *callbackWrapper = new (SYSTEM) CallbacksWrapper(callback);
+
+    _callbacks.insert(callbackWrapper->link());
+}
+
+int SiFiveU_NIC::callbacks_handler() 
+{
+    while (!_deleted) 
+    {
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Waiting for next package" << endl;
+
+        _semaphore->p();
+    }
+
+    return 1;
+}
+
 SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int payload) 
 {
     db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::alloc(src=" << _configuration.address
@@ -222,55 +241,53 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 
 void SiFiveU_NIC::receive() 
 {
-    for (unsigned int count = RX_BUFS, i = _rx_cur; 
-                    count && (_rx_ring[i].is_owner()); 
-                    count--, ++i %= RX_BUFS, _rx_cur = i) 
+    unsigned int i = _rx_cur %= RX_BUFS;
+
+    _rx_cur++;
+
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] " << endl;
+
+    // Lock the buffer and only unlock in the free(Buffer *) 
+    if (_rx_buffers[i]->lock() && _rx_ring[i].is_owner()) 
     {
-        // Lock the buffer and only unlock in the free(Buffer *) 
-        if (_rx_buffers[i]->lock()) 
-        {
-            Rx_Desc * descriptor = &_rx_ring[i];
-            Buffer * buffer = _rx_buffers[i];
-            
-            // The internal protocol is to set the data always in the address() of CBuffer
-            Frame * frame = reinterpret_cast<Frame*>(buffer->address());
+        Rx_Desc * descriptor = &_rx_ring[i];
+        Buffer * buffer = _rx_buffers[i];
+        
+        // The internal protocol is to set the data always in the address() of CBuffer
+        Frame * frame = reinterpret_cast<Frame*>(buffer->address());
 
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << *descriptor << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << *descriptor << endl;
 
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame => " << *frame << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame => " << *frame << endl;
 
-            // Build the buffer info to pass to higher layers
-            unsigned long frame_size = descriptor->frame_size();
-            BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
+        // Build the buffer info to pass to higher layers
+        unsigned long frame_size = descriptor->frame_size();
+        BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
 
-            // Update the data address to remove the Header
-            buffer_info->shrink_left(sizeof(Header));
+        // Update the data address to remove the Header
+        buffer_info->shrink_left(sizeof(Header));
 
-            // Remove the size considered by the bits of FCS 
-            if (BRING_FCS_TO_MEM) {
-                buffer_info->shrink(sizeof(CRC));
-            }
-            
-            // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
-            if (frame->header()->src() == _configuration.address) 
-            {
-                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC" << i << "] => SRC == DST, releasing frame " << endl;
-
-                free(buffer_info);
-
-                continue;
-            }
-
-            _statistics.rx_packets++;
-            _statistics.rx_bytes += frame_size;
-
-            // Se ninguém foi notificado descarta o buffer, caso contrário os observadores tem a responsabilidade de chamar o free 
-            bool someone_was_notified = notify(frame->prot(), buffer_info);
-            if (!someone_was_notified) 
-            {
-                free(buffer_info);
-            } 
+        // Remove the size considered by the bits of FCS 
+        if (BRING_FCS_TO_MEM) {
+            buffer_info->shrink(sizeof(CRC));
         }
+        
+        // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
+        if (frame->header()->src() == _configuration.address) 
+        {
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC" << i << "] => SRC == DST, releasing frame " << endl;
+
+            free(buffer_info);
+
+            return;
+        }
+
+        _statistics.rx_packets++;
+        _statistics.rx_bytes += frame_size;
+
+
+        // Signals the callbacks thread that an package arrived
+        _semaphore->v();
     }
 }
 

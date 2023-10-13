@@ -9,6 +9,8 @@
 #include <architecture/mmu.h>
 #include <network/ethernet.h>
 #include <machine/ic.h>
+#include <synchronizer.h>
+#include <process.h>
 
 __BEGIN_SYS
 
@@ -247,6 +249,8 @@ class SiFiveU_NIC: public NIC<Ethernet>, private GEM
     typedef Ethernet::BufferInfo BufferInfo;
     typedef IC_Common::Interrupt_Id Interrupt_Id;
 
+    typedef Simple_List<void (*)(BufferInfo *)> Queue;
+
 private:
     // Transmit and Receive Ring sizes
     static const unsigned int UNITS = Traits<SiFiveU_NIC>::UNITS;
@@ -259,6 +263,34 @@ private:
     static const unsigned int RX_DESC_BUFFER_SIZE = RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U); 
     static const unsigned int TX_DESC_BUFFER_SIZE = TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U); 
     static const unsigned int DESC_BUFFER_SIZE = RX_DESC_BUFFER_SIZE + TX_DESC_BUFFER_SIZE;
+
+    class CallbacksWrapper
+    {
+    public:
+        typedef Simple_List<CallbacksWrapper> List;
+        typedef typename List::Element Element;
+
+        // Define um tipo de ponteiro de função para sua função de callback
+        typedef void (*CallbackFunction)(BufferInfo *);
+        
+        CallbacksWrapper(CallbackFunction callback) : _link1(this), _link2(this), _callback(callback) {}
+
+        void callCallback(BufferInfo *bufferInfo) { { _callback(bufferInfo); } }
+
+        Element *link1() { return &_link1; }
+        Element *link() { return link1(); }
+        Element *lint() { return link1(); }
+        Element *link2() { return &_link2; }
+        Element *lext() { return link2(); }
+    protected:
+
+    private:
+        Element _link1;
+        Element _link2;
+        CallbackFunction _callback;
+    };
+
+    CallbacksWrapper::List _callbacks;
 
 protected:
     SiFiveU_NIC();
@@ -339,6 +371,10 @@ public:
     /// @brief Returns an instance of this class
     static SiFiveU_NIC * get() { return _device; }
 
+    /// @brief Attach an Callback function to be called when a Package is received 
+    /// @param callback The callback function, it must receive an BufferInfo, to retrieve the data
+    void attach_callback(void (*callback)(BufferInfo *));
+
 private:
     void configure();
     void configure_mac();
@@ -346,6 +382,15 @@ private:
     void handle_interruption();
 
     static void interruption_handler(Interrupt_Id interrupt);
+
+    /// @brief Thread to call all the callbacks with the BufferInfo that arrived 
+    static Thread * _callbacks_caller_thread;
+    /// @brief Semaphore to block the execution of the Thread
+    static Semaphore * _semaphore;
+    /// @brief Boolean to determine when the Thread should stop
+    static bool _deleted;
+    /// @brief Function executed by the Thread
+    static int callbacks_handler();
 
 private:
     Configuration _configuration;

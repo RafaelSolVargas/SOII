@@ -7,7 +7,6 @@
 #include <utility/string.h>
 #include <utility/heap.h>
 #include <system/info.h>
-#include <network/ip.h>
 #include <memory.h>
 
 __BEGIN_SYS
@@ -43,8 +42,6 @@ class System
 public:
     static System_Info * const info() { assert(_si); return _si; }
 
-    static IP * _ip;
-
 private:
     static void init();
 
@@ -56,7 +53,6 @@ private:
 
     static CBuffer * _Cbuffer;
     static NonCBuffer * _NCbuffer;
-    static SiFiveU_NIC * _nic;
 };
 
 __END_SYS

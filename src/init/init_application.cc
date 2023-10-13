@@ -53,15 +53,6 @@ public:
 
             System::_NCbuffer = new (SYSTEM) NonCBuffer(address, nc_buffer_segment->size());
         }  
-
-        db<Init>(INF) << "Initializing SiFiveU NIC: " << endl;
-        System::_nic = SiFiveU_NIC::init();
-
-        // Cria uma instância de observador para a NIC
-        System::_ip = IP::init(System::_nic);
-
-        // Cadastra a camada IP como observadora da NIC pelo protocolo usado por ela
-        System::_nic->attach(System::_ip, System::_ip->IP_PROT);
     }
 };
 

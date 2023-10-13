@@ -25,8 +25,6 @@ Heap * System::_heap;
 
 CBuffer * System::_Cbuffer;
 NonCBuffer * System::_NCbuffer;
-SiFiveU_NIC * System::_nic;
-IP * System::_ip;
 
 __END_SYS
 

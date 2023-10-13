@@ -29,7 +29,7 @@ public:
     static void reboot();
     static void poweroff();
 
-    static const UUID & uuid() { return System::info()->bm.uuid; }
+    static const UUID & uuid();
 
 private:
     static void pre_init(System_Info * si);
