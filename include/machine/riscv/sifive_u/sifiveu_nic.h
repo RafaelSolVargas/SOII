@@ -379,26 +379,33 @@ private:
     void configure();
     void configure_mac();
     void configure_int();
+    void configure_callbacks();
     void handle_interruption();
 
     static void interruption_handler(Interrupt_Id interrupt);
 
-    /// @brief Thread to call all the callbacks with the BufferInfo that arrived 
-    static Thread * _callbacks_caller_thread;
-    /// @brief Semaphore to block the execution of the Thread
-    static Semaphore * _semaphore;
-    /// @brief Boolean to determine when the Thread should stop
-    static bool _deleted;
-    /// @brief Function executed by the Thread
-    static int callbacks_handler();
+    /// @brief Function to handle the arrive of 
+    int callbacks_handler();
+
+    /// @brief Static function to call the callbacks_handler
+    /// @return 
+    static int class_callbacks_handler();
 
 private:
+    /// @brief Thread to call all the callbacks with the BufferInfo that arrived 
+    Thread * _callbacks_caller_thread;
+    /// @brief Semaphore to block the execution of the Thread
+    Semaphore * _semaphore;
+    /// @brief Boolean to determine when the Thread should stop
+    bool _deleted;
+
     Configuration _configuration;
     Statistics _statistics;
 
     DMA_Buffer* _rings_buffer;
 
     int _rx_cur;
+    int _rx_callback_cur;
     Rx_Desc * _rx_ring;
     Phy_Addr _rx_ring_phy;
 

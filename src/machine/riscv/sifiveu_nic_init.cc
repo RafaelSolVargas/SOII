@@ -8,9 +8,6 @@
 __BEGIN_SYS
 
 SiFiveU_NIC * SiFiveU_NIC::_device;
-Semaphore * SiFiveU_NIC::_semaphore;
-Thread * SiFiveU_NIC::_callbacks_caller_thread;
-bool SiFiveU_NIC::_deleted;
 
 /// @brief Method to get an instance of the SiFiveU_NIC
 SiFiveU_NIC* SiFiveU_NIC::init() 
@@ -20,14 +17,8 @@ SiFiveU_NIC* SiFiveU_NIC::init()
         // Initialize the NIC
         _device = new (SYSTEM) SiFiveU_NIC();
 
-        // Flag to delete the Callbacks Thread
-        _deleted = false;
-
-        // Create the semaphore for the Thread
-        _semaphore = new (SYSTEM) Semaphore(0);
-
-        // Create the thread as Ready, it will be blocked in first execution
-        _callbacks_caller_thread = new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &callbacks_handler);
+        // Configure the callbacks handler
+        _device->configure_callbacks();
     } 
 
     return _device;
@@ -74,6 +65,7 @@ SiFiveU_NIC::SiFiveU_NIC()
 
     // Inicializa os Rx Descriptors
     _rx_cur = 0;
+    _rx_callback_cur = 0;
     _rx_ring_phy = _rings_buffer->phy_address();
     _rx_ring = reinterpret_cast<Rx_Desc *>(rx_ring_addr);
     for (unsigned int i = 0; i < RX_BUFS; i++) 

@@ -14,9 +14,8 @@ OStream cout;
 void show_stats() 
 {
     SiFiveU_NIC * nic = SiFiveU_NIC::init();
-    IP * ip = IP::init(nic);
 
-    NIC<Ethernet>::Statistics stat = ip->nic()->statistics();
+    NIC<Ethernet>::Statistics stat = nic()->statistics();
     cout << "Statistics\n"
          << "Tx Packets: " << stat.tx_packets << "\n"
          << "Tx Bytes:   " << stat.tx_bytes << "\n"
@@ -48,8 +47,6 @@ void ip_test_datagram() {
             data[MTU - 2] = '0' + 9;
             data[MTU - 1] = '\n';
     
-            cout << MTU << endl;
-
             ip->send(destination_mac, data, MTU);
         }
     }

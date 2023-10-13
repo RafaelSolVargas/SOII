@@ -11,25 +11,6 @@ extern "C" { void _panic(); }
 
 __BEGIN_SYS
 
-void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *)) 
-{
-    CallbacksWrapper *callbackWrapper = new (SYSTEM) CallbacksWrapper(callback);
-
-    _callbacks.insert(callbackWrapper->link());
-}
-
-int SiFiveU_NIC::callbacks_handler() 
-{
-    while (!_deleted) 
-    {
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Waiting for next package" << endl;
-
-        _semaphore->p();
-    }
-
-    return 1;
-}
-
 SiFiveU_NIC::BufferInfo * SiFiveU_NIC::alloc(const Address & dst, const Protocol & prot, unsigned int payload) 
 {
     db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::alloc(src=" << _configuration.address
@@ -245,8 +226,6 @@ void SiFiveU_NIC::receive()
 
     _rx_cur++;
 
-    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] " << endl;
-
     // Lock the buffer and only unlock in the free(Buffer *) 
     if (_rx_buffers[i]->lock() && _rx_ring[i].is_owner()) 
     {
@@ -259,31 +238,30 @@ void SiFiveU_NIC::receive()
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << *descriptor << endl;
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame => " << *frame << endl;
-
-        // Build the buffer info to pass to higher layers
-        unsigned long frame_size = descriptor->frame_size();
-        BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
-
-        // Update the data address to remove the Header
-        buffer_info->shrink_left(sizeof(Header));
-
-        // Remove the size considered by the bits of FCS 
-        if (BRING_FCS_TO_MEM) {
-            buffer_info->shrink(sizeof(CRC));
-        }
         
         // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
         if (frame->header()->src() == _configuration.address) 
         {
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC" << i << "] => SRC == DST, releasing frame " << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => SRC == DST, releasing frame " << endl;
 
-            free(buffer_info);
+            descriptor->clear_after_received();
+            buffer->unlock();
+
+            return;
+        }
+
+        if (_callbacks.empty()) 
+        {
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC" << i << "] => None callback registered, releasing frame " << endl;
+
+            descriptor->clear_after_received();
+            buffer->unlock();
 
             return;
         }
 
         _statistics.rx_packets++;
-        _statistics.rx_bytes += frame_size;
+        _statistics.rx_bytes += descriptor->frame_size();
 
 
         // Signals the callbacks thread that an package arrived
