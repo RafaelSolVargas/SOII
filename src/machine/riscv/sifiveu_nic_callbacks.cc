@@ -4,9 +4,9 @@
 
 __BEGIN_SYS
 
-void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *)) 
+void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *), const Protocol & prot) 
 {
-    CallbacksWrapper *callbackWrapper = new (SYSTEM) CallbacksWrapper(callback);
+    CallbacksWrapper* callbackWrapper = new (SYSTEM) CallbacksWrapper(callback, prot);
 
     _callbacks.insert(callbackWrapper->link());
 }
@@ -45,6 +45,8 @@ int SiFiveU_NIC::callbacks_handler()
 
         Rx_Desc * descriptor = &_rx_ring[i];
         Buffer * buffer = _rx_buffers[i];
+
+        Frame* frame = reinterpret_cast<Frame*>(buffer->address());
         
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Preparing package in RX_DESC[" << i << "]"<< endl;
 
@@ -66,9 +68,12 @@ int SiFiveU_NIC::callbacks_handler()
         {
             CallbacksWrapper* wrapper = el->object();
 
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Sending RX_DESC[" << i << "]" << endl;
+            if (wrapper->protocol() == frame->prot()) 
+            {
+                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Sending RX_DESC[" << i << "]" << endl;
 
-            wrapper->callCallback(buffer_info);
+                wrapper->callCallback(buffer_info);
+            }
         }
 
         // Releases the RX buffer 

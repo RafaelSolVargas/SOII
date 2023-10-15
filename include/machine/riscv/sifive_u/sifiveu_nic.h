@@ -247,6 +247,7 @@ class SiFiveU_NIC: public NIC<Ethernet>, private GEM
     friend class Init_Application;
 
     typedef Ethernet::BufferInfo BufferInfo;
+    typedef Ethernet::Protocol Protocol;
     typedef IC_Common::Interrupt_Id Interrupt_Id;
 
     typedef Simple_List<void (*)(BufferInfo *)> Queue;
@@ -273,9 +274,12 @@ private:
         // Define um tipo de ponteiro de função para sua função de callback
         typedef void (*CallbackFunction)(BufferInfo *);
         
-        CallbacksWrapper(CallbackFunction callback) : _link1(this), _link2(this), _callback(callback) {}
+        CallbacksWrapper(CallbackFunction callback, const Protocol & prot) 
+            : _link1(this), _link2(this), _callback(callback), _protocol(prot) { }
 
         void callCallback(BufferInfo *bufferInfo) { { _callback(bufferInfo); } }
+        Protocol protocol() { return _protocol; }
+
 
         Element *link1() { return &_link1; }
         Element *link() { return link1(); }
@@ -288,6 +292,7 @@ private:
         Element _link1;
         Element _link2;
         CallbackFunction _callback;
+        Protocol _protocol;
     };
 
     CallbacksWrapper::List _callbacks;
@@ -341,25 +346,12 @@ public:
     const Configuration & configuration() { return _configuration; }
     const Statistics & statistics() { return _statistics; }
 
-    // Método para adicionar um observador para ser notificado pela NIC
-    void attach(Observer * o, const Protocol & p) override {
-        db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::attached(o=" << o << ",p=" << p << ")" << endl;
+    /// @brief Returns an instance of this class
+    static SiFiveU_NIC * get() { return _device; }
 
-        NIC<Ethernet>::attach(o, p);
-        
-        // Ativa as interrupções diretamente no registrador da GEM
-        GEM::reg_value(R_NW_CTRL) |=  R_NW_CTRL_B_RX_EN;
-    }
-
-    void detach(Observer * o, const Protocol & p) {
-        NIC<Ethernet>::detach(o, p);
-
-        if(!observers()) 
-        {
-            // Desativa as interrupções diretamente no registrador da GEM
-            GEM::reg_value(R_NW_CTRL) &= ~R_NW_CTRL_B_RX_EN;
-        }
-    }
+    /// @brief Attach an Callback function to be called when a Package is received 
+    /// @param callback The callback function, it must receive an BufferInfo, to retrieve the data
+    void attach_callback(void (*callback)(BufferInfo *), const Protocol & prot);
 
     /// @brief DO NOT USE THIS METHOD
     Buffer * alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) { return _rx_buffers[0]; }
@@ -367,13 +359,9 @@ public:
     int send(Buffer * buf) { return 1; }
     /// @brief DO NOT USE THIS METHOD
     bool drop(Buffer * buf) { return true; } // after send, while still in the working queues, not supported by many NICs
-
-    /// @brief Returns an instance of this class
-    static SiFiveU_NIC * get() { return _device; }
-
-    /// @brief Attach an Callback function to be called when a Package is received 
-    /// @param callback The callback function, it must receive an BufferInfo, to retrieve the data
-    void attach_callback(void (*callback)(BufferInfo *));
+    /// @brief Métodos não devem ser usados
+    void attach(Observer * o, const Protocol & p) override { NIC<Ethernet>::attach(o, p); }
+    void detach(Observer * o, const Protocol & p) { NIC<Ethernet>::detach(o, p); }
 
 private:
     void configure();
