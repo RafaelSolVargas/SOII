@@ -40,6 +40,8 @@ void ip_test_datagram() {
     { 
         cout << " I'm the sender " << endl;
 
+        Delay(100000);
+
         for (unsigned int i = 0; i < DATAGRAMS_QUANT; i++) {
             memset(data, '0' + i, MTU);
             
@@ -62,6 +64,9 @@ void ip_test_datagram() {
             Delay(100000);
         }
     }  
+
+    delete ip;
+    delete nic;
 }
 
 
@@ -72,9 +77,7 @@ int main()
 
     ip_test_datagram();
 
-    cout << "IP Fragmentation Test" << endl;
-
-    //ip_fragmentation_test();
+    cout << "IP Test Finished" << endl;
 
     return 0;
 }

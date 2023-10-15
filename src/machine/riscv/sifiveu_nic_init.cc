@@ -209,6 +209,12 @@ void SiFiveU_NIC::configure_mac()
 }
 
 SiFiveU_NIC::~SiFiveU_NIC() {
+    // Mark the flag for the CallbackThread finish
+    _deleted = true;
+
+    // Releases the CallbackThread
+    _semaphore->v();
+
     delete _rings_buffer;
 
     for (unsigned int i = 0; i < RX_BUFS; i++) {

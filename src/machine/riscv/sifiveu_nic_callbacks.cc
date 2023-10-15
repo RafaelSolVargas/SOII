@@ -13,6 +13,8 @@ void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *), const Protocol
 
 void SiFiveU_NIC::configure_callbacks() 
 {
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::ConfiguringCallbacks()" << endl;
+
     // Flag to delete the Callbacks Thread
     _deleted = false;
 
@@ -36,6 +38,8 @@ int SiFiveU_NIC::callbacks_handler()
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Waiting for next package" << endl;
 
         _semaphore->p();
+
+        if (_deleted) break;
 
         // Index of the next buffer that was received, will not use the _rx_cur because many packages can arrive 
         // before the code reaches here
@@ -79,6 +83,8 @@ int SiFiveU_NIC::callbacks_handler()
         // Releases the RX buffer 
         free(buffer_info);
     }
+
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::~CallbackThread()" << endl;
 
     return 1;
 }

@@ -45,6 +45,8 @@ void Thread::init()
         db<Init, Thread>(TRC) << "Thread::init()::Scheduler_Timer Created" << endl;
     }
 
+    db<Init, Thread>(TRC) << "Thread::init()::Disabling Interruptions" << endl;
+
     // No more interrupts until we reach init_end
     CPU::int_disable();
 
