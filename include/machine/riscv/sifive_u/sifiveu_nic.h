@@ -3,6 +3,7 @@
 #ifndef __si_five_u_nic_h
 #define __si_five_u_nic_h
 
+#include <architecture.h>
 #include <utility/nic_buffers.h>
 #include <architecture/cpu.h>
 #include <architecture/tsc.h>
@@ -386,6 +387,9 @@ private:
     Semaphore * _semaphore;
     /// @brief Boolean to determine when the Thread should stop
     bool _deleted;
+
+    /// @brief Mutex to serialize the access to the received buffers
+    Mutex * _rx_buffers_lock;
 
     Configuration _configuration;
     Statistics _statistics;

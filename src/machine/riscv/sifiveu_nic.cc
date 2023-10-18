@@ -182,17 +182,21 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
                         << *prot << dec << ",d=" << data << ",s=" << size
                         << ") => " << endl;
 
-    // Wait for a received frame and seize it
-    unsigned int i = _rx_cur;
+    // Get the permission to modify the RX Buffers
+    _rx_buffers_lock->lock();
+
     for (bool locked = false; !locked;)
     {
-        for (; !(_rx_ring[i].is_owner()); ++i %= RX_BUFS);
+        // Verifica se o buffer atual tem dado recebido, enquanto não tiver dado recebido executa operação de 
+        // incremento atômico e depois módulo para passar para o próximo índice 
+        for (; !(_rx_ring[_rx_cur].is_owner()); ++_rx_cur %= RX_BUFS);
 
-        locked = _rx_buffers[i]->lock();
+        locked = _rx_buffers[_rx_cur]->lock();
     }
 
-    // Update for the next Buffer
-    _rx_cur = (i + 1) % RX_BUFS;
+    unsigned i = _rx_cur;
+
+    _rx_buffers_lock->unlock();
 
     Buffer * buffer = _rx_buffers[i];
     Rx_Desc * descriptor = &_rx_ring[i];
@@ -222,13 +226,18 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 
 void SiFiveU_NIC::receive() 
 {
-    unsigned int i = _rx_cur %= RX_BUFS;
+    _rx_buffers_lock->lock();
 
-    _rx_cur++;
-
-    // Lock the buffer and only unlock in the free(Buffer *) 
-    if (_rx_buffers[i]->lock() && _rx_ring[i].is_owner()) 
+    // Lock the buffer and only unlock in the free(Buffer *)
+    // Só faz Lock se ele ler que tem algum pacote
+    if (_rx_ring[_rx_cur].is_owner() && _rx_buffers[_rx_cur]->lock()) 
     {
+        unsigned int i = _rx_cur;
+
+        ++_rx_cur %= RX_BUFS;
+        
+        _rx_buffers_lock->unlock();
+
         Rx_Desc * descriptor = &_rx_ring[i];
         Buffer * buffer = _rx_buffers[i];
         
@@ -237,7 +246,7 @@ void SiFiveU_NIC::receive()
 
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => " << *descriptor << endl;
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame => " << *frame << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::receive::Frame[" << i << "]" << " => " << *frame << endl;
         
         // Caso estejamos recebendo um buffer que veio da mesma máquina, liberar diretamente
         if (frame->header()->src() == _configuration.address) 
@@ -252,7 +261,7 @@ void SiFiveU_NIC::receive()
 
         if (_callbacks.empty()) 
         {
-            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC" << i << "] => None callback registered, releasing frame " << endl;
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => None callback registered, releasing frame " << endl;
 
             descriptor->clear_after_received();
             buffer->unlock();
@@ -263,14 +272,9 @@ void SiFiveU_NIC::receive()
         _statistics.rx_packets++;
         _statistics.rx_bytes += descriptor->frame_size();
 
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => Releasing CallbackThread" << endl;
 
-        // Signals the callbacks thread that an package arrived
-        // Create an Semaphore handler to release the CallbackThread, the boolean will disable the preemptive behavior of 
-        // the Thread, forcing the execution of the callback to be after the interruption be handled
-        Semaphore_Handler * sem_handler = new (SYSTEM) Semaphore_Handler(_semaphore, true);
-
-        // Configure the handler to be called in the minimum value that is not now, only one time
-        new (SYSTEM) Alarm(2000, sem_handler, 1);
+        _semaphore->v();
     }
 }
 
@@ -287,7 +291,7 @@ bool SiFiveU_NIC::free(BufferInfo * buffer_info)
     // Libera o lock do buffer Rx
     buffer->unlock();
 
-    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << index << "] released => " << descriptor << " => " << descriptor->is_owner() << endl;
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << index << "] released => " << descriptor << " => " << endl;
 
     return true;  
 }

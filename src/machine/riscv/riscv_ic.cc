@@ -131,9 +131,9 @@ void IC::external()
     
     Interrupt_Id id = eirq2int(eirq);
     if (id != EXCS + IRQS) { // claim != 0
-        _int_vector[id](eirq);
-        
         complete_external(eirq);
+
+        _int_vector[id](eirq);
     }
 }
 
