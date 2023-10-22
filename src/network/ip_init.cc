@@ -19,12 +19,18 @@ IP* IP::init(NIC<Ethernet> * nic)
         _ip = new (SYSTEM) IP(nic);
 
         // Configure the callback to be called when the NIC receive frames
-        _ip->_nic->attach_callback(&class_nic_callback, IP_PROT);
+        _ip->_nic->attach_callback(&class_nic_callback, PROTOCOL);
     }
 
     return _ip;
 }
 
-IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic)) { }
+IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic)), _datagrams_received(0)
+{ 
+    db<IP>(TRC) << "Initializing IP" << endl;
+
+    // Get the IP from the MAC Address
+    _address = convert_mac_to_ip_address(_nic->address());
+}
 
 __END_SYS

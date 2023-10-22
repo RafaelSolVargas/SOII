@@ -36,7 +36,8 @@ public:
                 _address[i] = BROADCAST;
         }
 
-        Address(const char * str) { // String formated as A.B.C.D or A:B:C:D:E:F
+        /// @brief String formated as A.B.C.D or A:B:C:D:E:F
+        Address(const char * str) {
             static const char sep = (LENGTH == 4) ? '.' : ':';
             char * token = strchr(str, sep);
             for(unsigned int i = 0; i < LENGTH; i++, ++token, str = token, token = strchr(str, sep))

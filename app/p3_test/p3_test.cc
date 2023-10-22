@@ -1,4 +1,4 @@
-// EPOS NIC Test Programs
+ // EPOS NIC Test Programs
 
 #include <network/ethernet.h>
 #include <utility/random.h>
@@ -28,13 +28,13 @@ void ip_test_datagram() {
 
     IP * ip = IP::init(nic);
 
-    unsigned const int MTU = IP::MTU_WO_FRAG;
+    unsigned const int MTU = ip->fragment_mtu();
     unsigned const int DATAGRAMS_QUANT = 10;
     
     char data[MTU];
 
-    NIC<Ethernet>::Address destination_mac = ip->nic()->broadcast();
-    bool is_sender = (ip->nic()->address()[5] % 2);
+    IP::Address destination_ip = ip->broadcast();
+    bool is_sender = (ip->address()[3] % 2);
 
     if (is_sender) 
     { 
@@ -49,18 +49,18 @@ void ip_test_datagram() {
             data[MTU - 2] = '0' + 9;
             data[MTU - 1] = '\n';
     
-            ip->send(destination_mac, data, MTU);
+            ip->send(destination_ip, IP::TCP, data, MTU);
         }
     }
     else
     { 
         cout << "I'm the receiver" << endl;
 
-        unsigned int initial_packages = ip->nic()->statistics().rx_packets; 
+        unsigned int initial_packages = ip->datagrams_received(); 
 
         cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
 
-        while (ip->nic()->statistics().rx_packets < DATAGRAMS_QUANT + initial_packages) {
+        while (ip->datagrams_received() < DATAGRAMS_QUANT + initial_packages) {
             Delay(100000);
         }
     }  
