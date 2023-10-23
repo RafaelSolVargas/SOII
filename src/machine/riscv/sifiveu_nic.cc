@@ -226,7 +226,9 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 
 void SiFiveU_NIC::receive() 
 {
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Getting Lock " << endl;
     _rx_buffers_lock->lock();
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Lock acquired " << endl;
 
     // Lock the buffer and only unlock in the free(Buffer *)
     // Só faz Lock se ele ler que tem algum pacote
@@ -349,6 +351,7 @@ void SiFiveU_NIC::handle_interruption()
     // One or more frames was received and stored in our buffers
     if (interruptionReg & R_INT_STATUS_B_RX_COMPLETE) 
     {
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler() CallingReceive()" << endl;
         receive();
 
         // Write 1 to these bits to set that the receive was finished

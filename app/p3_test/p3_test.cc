@@ -64,12 +64,46 @@ void ip_test_datagram() {
             Delay(100000);
         }
     }  
-
-    delete ip;
-    delete nic;
 }
 
+void ip_test_fragmentation() {
+    SiFiveU_NIC * nic = SiFiveU_NIC::init();
+    IP * ip = IP::init(nic);
 
+    unsigned const int DATA_SIZE = ip->fragment_mtu() * 5 - 200;
+    
+    char data[DATA_SIZE];
+
+    IP::Address destination_ip = ip->broadcast();
+    bool is_sender = (ip->address()[3] % 2);
+
+    if (is_sender) 
+    { 
+        cout << " I'm the sender " << endl;
+
+        Delay(100000);
+
+        memset(data, '0' + 4, DATA_SIZE);
+        
+        data[0] = '0' + 8;
+        data[DATA_SIZE - 2] = '0' + 8;
+        data[DATA_SIZE - 1] = '\n';
+
+        ip->send(destination_ip, IP::TCP, data, DATA_SIZE);
+    }
+    else
+    { 
+        cout << "I'm the receiver" << endl;
+
+        unsigned int initial_packages = ip->datagrams_received(); 
+
+        cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
+
+        while (ip->datagrams_received() < 1 + initial_packages) {
+            Delay(100000);
+        }
+    }  
+}
 
 int main()
 {
@@ -77,7 +111,20 @@ int main()
 
     ip_test_datagram();
 
-    cout << "IP Test Finished" << endl;
+    cout << "IP Test Datagram Finished" << endl;
+
+    cout << "IP Test Fragmentation" << endl;
+
+    ip_test_fragmentation();
+
+    cout << "IP Test Fragmentation Finished" << endl;
+
+    SiFiveU_NIC * nic = SiFiveU_NIC::init();
+
+    IP * ip = IP::init(nic);
+
+    delete ip;
+    delete nic;
 
     return 0;
 }

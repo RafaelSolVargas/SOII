@@ -178,7 +178,7 @@ class MemAllocationMap
 {
 public:
     MemAllocationMap(unsigned long totalSize, int totalChunks)
-        : _original_size(totalSize), _total_size(totalSize), _quant_chunks(totalChunks)
+        : _quant_chunks(totalChunks), _original_size(totalSize), _total_size(totalSize), _data_copied(0)
     {
         _chunks = new void*[totalChunks];
         _chunks_sizes = new unsigned long[totalChunks];
@@ -207,19 +207,94 @@ public:
         }
         db<NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
     }
-
-    unsigned long original_size() { return _original_size; }
-    unsigned long total_size() { return _total_size; }
-    int quant_chunks() { return _quant_chunks; }
+    
+    /// @brief Pointers for each chunk allocated by the NonCBuffer 
     void** chunks() { return _chunks; }
+
+    /// @brief Size of data in each chunk
     unsigned long* chunks_sizes() { return _chunks_sizes; }
+    
+    /// @brief Quant of chunks used in the allocation
+    int quant_chunks() { return _quant_chunks; }
+    
+    /// @brief The chunk where the last copy ended 
+    int current_chunk_index() 
+    {
+        unsigned long offset = 0;
+        int i = 0;
+
+        // Pass in each chunk calculating where the _data_copied offset is placed 
+        for (; i < _quant_chunks; i++) 
+        {
+            unsigned long size = _chunks_sizes[i];
+            
+            // Increase the offset with the total size of the chunk
+            offset += size;
+
+            // There is still left data in current chunk
+            if (offset > _data_copied) 
+            {
+                break;
+            } 
+
+            // Exactly the data in current buffer was copied, so it's the next
+            if (offset == _data_copied) 
+            {
+                i++;
+                break;
+            }
+        }
+
+        db<NicBuffers>(TRC) << "BuffersHandler::CurrentBuffer => " << i << endl;
+
+        return i;
+    }
+
+    /// @brief The chunk offset where the last copy ended
+    int current_chunk_offset() 
+    {
+        unsigned long offset = 0;
+        unsigned int i = 0;
+
+        unsigned int chunk_index = current_chunk_index();
+
+        // Pass in each chunk until the before of the current, summing the data size in the previous chunks 
+        for (; i < chunk_index; i++) 
+        {
+            unsigned long size = _chunks_sizes[i];
+            
+            // Increase the offset with the total size of the chunk
+            offset += size;
+        }
+
+        return _data_copied - offset;
+    }
+
+    /// @brief Original size of the allocation
+    unsigned long original_size() { return _original_size; }
+    
+    unsigned long total_size() { return _total_size; }
+
+    /// @brief Total data already copied
+    unsigned long data_copied() { return _data_copied; }
+
+    /// @brief Increase the counter of copied data with the size argument
+    void data_copied(unsigned long size) { _data_copied += size; }
+
+    /// @brief Reset the data already copied, necessary when wanting the copy again
+    void reset_data_copied() { _data_copied = 0; }
 
 private:
-    unsigned long _original_size;
-    unsigned long _total_size;
+    // The chunks allocated by the NonCBuffers
     int _quant_chunks;
     void **_chunks;     
     unsigned long *_chunks_sizes;
+
+    unsigned long _original_size;
+    unsigned long _total_size;
+
+    /// Variables to deal with copying data in parts, has a memory of what is already copied
+    unsigned long _data_copied;
 };
 
 // Contiguous Buffer to be used to pass contiguous data directly to the DMA 

@@ -55,32 +55,29 @@ public:
             /// @param src Source IP Address
             /// @param dst Destination IP Address
             /// @param prot Protocol being used
-            /// @param size Total size of the original datagram, (Data + Header) 
-            /// @param data_size Size of the data to be stored in this Header
+            /// @param total_size Total size of the datagram
             /// @param id Identifier of datagram
             /// @param flags Flag of the datagram
             /// @param offset If is a fragment, the offset
-            Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int size, 
-            unsigned int data_size, unsigned int id, const FragmentFlags & flags, unsigned short offset) 
-            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), 
-              _id(id), _flags(flags), _offset(0), _ttl(TIME_TO_LIVE), _protocol(prot), _checksum(0), _src(src), _dst(dst)
+            Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int total_size, 
+            unsigned int id, const FragmentFlags & flags, unsigned short offset) 
+            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _id(id), _flags(flags), 
+              _offset(offset), _ttl(TIME_TO_LIVE), _protocol(prot), _checksum(0), _src(src), _dst(dst)
             {
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
                 {
-                    _length = data_size + sizeof(Header);
+                    unsigned int last_fragment_data = (total_size % FRAGMENT_MTU);
+                    if (last_fragment_data == 0) 
+                    {
+                        last_fragment_data = FRAGMENT_MTU;
+                    } 
+
+                    _length = last_fragment_data + sizeof(Header);
                 } 
                 else 
                 {
-                    _length = size;
+                    _length = total_size + sizeof(Header);
                 }
-            }
-
-            /// @brief Build the Datagram copying the data directly after it, only to be used in contiguous memory
-            Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int size, unsigned int data_size, 
-            unsigned int id, const FragmentFlags & flags, unsigned short offset, const void * data) 
-            : Header(src, dst, prot, size, data_size, id, flags, offset)
-            { 
-                memcpy(data_address(), data, data_size);
             }
 
             /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
@@ -110,7 +107,7 @@ public:
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
                 {
                     // Remove the Header of each fragment and use the Header size stored in _length
-                    return (_offset * (FRAGMENT_MTU - sizeof(Header))) + _length;
+                    return (_offset * FRAGMENT_MTU) + _length;
                 }
 
                 // Other fragments already contains the total _length size
@@ -155,7 +152,7 @@ public:
                 << ",flg=" << h._flags
                 << ",off=" << h._offset
                 << ",ttl=" << h._ttl
-                << ",pro=" << h._protocol
+                << ",prot=" << h._protocol
                 << ",chk=" << h._checksum
                 << ",src=" << h._src
                 << ",dst=" << h._dst
@@ -193,6 +190,7 @@ class IP : public IPDefinitions
 private:
     typedef IPDefinitions::MAC_Address MAC_Address;
     typedef IPDefinitions::BufferInfo BufferInfo;
+    typedef NonCBuffer::AllocationMap AllocationMap;
 
 public:
     typedef IPDefinitions::Address Address;
@@ -204,9 +202,18 @@ public:
 public:
     static IP* init(NIC<Ethernet> * nic);
 
+    /// @brief Send the data directly from the array, it's required to be contiguous
+    /// @param dst Destiny Address to send data
+    /// @param prot Protocol being used (e.g TCP)
+    /// @param data Pointer to the data
+    /// @param size Bytes to copy
     void send(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
 
-    void send(const Address & dst, const Protocol & prot, NonCBuffer * ncBuffer);
+    /// @brief Sends the data preallocated inside an NonCBuffers accessed by the BuffersHandler class
+    /// @param dst Destiny Address to send data
+    /// @param prot Protocol being used (e.g TCP)
+    /// @param buffer_ptr Pointer returned by the BuffersHandler::alloc_nc() method 
+    void send_buffered_data(const Address & dst, const Protocol & prot, void * buffer_ptr);
 
     SiFiveU_NIC * nic() { return _nic; }
 
@@ -217,20 +224,37 @@ public:
 protected:
     IP(NIC<Ethernet> * nic);
 
+// Sending Methods
 private:
-    /// @brief Class method to be registered as callback in the SiFiveU_NIC, will only call the same method in member function
-    static void class_nic_callback(BufferInfo * bufferInfo);
+    /// @brief Send the data stored in the AllocationMap with Fragmentation, should not be called if the data can be stored in one Header
+    /// @param id Identifier of datagram
+    /// @param map AllocationMap returned by the BuffersHandler::alloc_nc() that contains more than one chunk
+    void send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, unsigned int id, AllocationMap * map);
 
-    /// @brief Will receive the buffers that arrive in the Ethernet 
-    /// @param bufferInfo The buffer structure
-    void nic_callback(BufferInfo * bufferInfo);
-    
-    void send_with_fragmentation(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
-    void send_without_fragmentation(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
+    /// @brief Send the contiguous memory to the NIC
+    /// @param id Identifier of datagram
+    /// @param flags Flags of datagram
+    /// @param data Pointer to the start of contiguous data 
+    /// @param data_size The data to be stored in the Header (without sizeof(Header))
+    void send_data(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, const void * data, unsigned int data_size); 
+
+    /// @brief Allocate an buffer in the NIC and prepare the Header without copying the data to the Header
+    /// @param total_size Total size of the Datagram, including all the fragments (without sizeof(Header))
+    /// @param data_size The data to be stored in the Header (without sizeof(Header))
+    /// @returns The buffer to be passed to the NIC
+    BufferInfo* prepare_header_in_nic_buffer(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, 
+    unsigned int total_size, unsigned int data_size, unsigned int offset);
+
+    /// @brief Get the next Datagram identifier
+    static unsigned int get_next_id();
+
+// Receiving Methods
+private:
     void handle_fragmentation(Header * fragment);
     void handle_datagram(Header * datagram);
 
-    static unsigned int get_next_id();
+    static void class_nic_callback(BufferInfo * bufferInfo);
+    void nic_callback(BufferInfo * bufferInfo);
 
 private:
     MAC_Address convert_ip_to_mac_address(const Address & address);
@@ -239,6 +263,8 @@ private:
     static unsigned int _datagram_count;
     static IP * _ip;
     SiFiveU_NIC * _nic;
+
+    BuffersHandler<char> nw_buffers;
 
     unsigned int _datagrams_received;
 };

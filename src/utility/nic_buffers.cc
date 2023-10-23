@@ -7,16 +7,6 @@ extern "C" { void _panic(); }
 
 __BEGIN_SYS
 
-// Implemente os métodos da classe BuffersHandler
-template <class T>
-CBuffer * BuffersHandler<T>::Cbuffer() {
-    return System::_Cbuffer;
-}
-
-template <class T>
-NonCBuffer * BuffersHandler<T>::NCbuffer() {
-    return System::_NCbuffer;
-}
 
 void CBuffer::out_of_memory(unsigned long bytes)
 {
