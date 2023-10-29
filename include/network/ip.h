@@ -144,7 +144,7 @@ public:
 
             unsigned short flags() { return _flags; }
 
-            unsigned short id() { return ntohs(_id); }
+            unsigned short id() const { return ntohs(_id); }
 
             friend Debug & operator<<(Debug & db, const Header & h) {
                 db << "{ihl=" << h._ihl

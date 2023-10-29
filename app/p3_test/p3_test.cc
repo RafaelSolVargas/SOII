@@ -70,7 +70,9 @@ void ip_test_fragmentation() {
     SiFiveU_NIC * nic = SiFiveU_NIC::init();
     IP * ip = IP::init(nic);
 
-    unsigned const int DATA_SIZE = ip->fragment_mtu() * 5 - 200;
+    unsigned int FRAG_MTU = ip->fragment_mtu();
+
+    unsigned const int DATA_SIZE = FRAG_MTU * 5 - 200;
     
     char data[DATA_SIZE];
 
@@ -83,10 +85,30 @@ void ip_test_fragmentation() {
 
         Delay(100000);
 
-        memset(data, '0' + 4, DATA_SIZE);
+        memset(data, '0' + 5, DATA_SIZE);
         
-        data[0] = '0' + 8;
-        data[DATA_SIZE - 2] = '0' + 8;
+        memset(data + (FRAG_MTU * 0), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 0) + 1, '0' + 1, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 1) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 1), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 1) + 1, '0' + 2, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 2) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 2), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 2) + 1, '0' + 3, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 3) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 3), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 3) + 1, '0' + 4, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 4) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + DATA_SIZE - 1, '0' + 9, 1); // 9 no final
+
+
+        cout << data << endl;
+
+        data[DATA_SIZE - 2] = '0' + 9;
         data[DATA_SIZE - 1] = '\n';
 
         ip->send(destination_ip, IP::TCP, data, DATA_SIZE);

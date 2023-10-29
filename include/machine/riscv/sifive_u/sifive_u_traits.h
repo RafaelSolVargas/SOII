@@ -134,7 +134,7 @@ template<> struct Traits<SiFiveU_NIC>: public Traits<Ethernet>
     static const unsigned int RECEIVE_BUFFERS = 10;
     static const unsigned int SEND_BUFFERS = 10;
 
-    static const bool debugged = true;
+    static const bool debugged = false;
     static const bool error   = true;
     static const bool warning = true;
     static const bool info    = true;
@@ -150,6 +150,7 @@ template<> struct Traits<PLIC>: public Traits<Machine_Common>
     // Number of NIC interrupts in SiFive U
     static const unsigned int INT_GIGABIT_ETH = 53;
 
+    static const bool debugged = false;
 };
 
 

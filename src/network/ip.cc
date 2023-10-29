@@ -21,7 +21,7 @@ void IP::send(const Address & dst, const Protocol & prot, const void * data, uns
 
     // Copy the data into an NonCBuffer and send it
     void * buffered_data_ptr = nw_buffers.alloc_nc(const_cast<char*>(reinterpret_cast<const char*>(data)), size);
-
+    
     // TODO -> Create an queue and a Thread to send the data and return it before actually sending to the NIC
     send_buffered_data(dst, prot, buffered_data_ptr);
 }
@@ -89,7 +89,7 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 {
     unsigned long total_size = map->original_size();
 
-    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram [" << id << "] with " << total_size << " bytes" << endl;
+    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram [" << id << "] with " << total_size << " bytes of data" << endl;
 
     unsigned long data_sended = 0;
     unsigned int offset = 0;
@@ -115,10 +115,15 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 
         nw_buffers.copy_nc(map, header->data_address(), fragment_size);
 
+        char data_to_print[fragment_size];
+
+        memcpy(data_to_print, header->data_address(), fragment_size);
+
+        db<IP>(TRC) << "IP::Fragment[" << offset << "]" << " >> " << data_to_print << endl;
+
         _nic->send(buffer);
 
         // Update data for next loop
-        map->data_copied(fragment_size);
         offset++;
         data_sended += fragment_size;
     }

@@ -205,6 +205,7 @@ public:
                                         << ", Size=" << _chunks_sizes[i]
                                         << endl; 
         }
+        db<NicBuffers>(TRC) << "DataCopied=" << _data_copied << endl; 
         db<NicBuffers>(TRC) << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" << endl; 
     }
     
@@ -245,8 +246,6 @@ public:
             }
         }
 
-        db<NicBuffers>(TRC) << "BuffersHandler::CurrentBuffer => " << i << endl;
-
         return i;
     }
 
@@ -265,7 +264,11 @@ public:
             
             // Increase the offset with the total size of the chunk
             offset += size;
+
+            db<NicBuffers>(TRC) << "AllocationMap::CurOff::AddOffset =>" << offset << endl;
         }
+
+        db<NicBuffers>(TRC) << "AllocationMap::CurOff =>" << _data_copied - offset << endl;
 
         return _data_copied - offset;
     }

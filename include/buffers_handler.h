@@ -81,6 +81,8 @@ public:
 
         AllocationMap * map = reinterpret_cast<AllocationMap *>(ptr);
 
+        map->log_allocation();
+
         unsigned long copied = 0;
 
         // Get the current chunk to copy data
@@ -88,7 +90,7 @@ public:
         for (; i < map->quant_chunks(); i++) 
         {
             // Get the information of the current chunk
-            T* c_addr = reinterpret_cast<T*>(map->chunks()[i]);
+            T* source_addr = reinterpret_cast<T*>(map->chunks()[i]) + map->current_chunk_offset();
 
             // Get the size stored in the current buffer
             unsigned long size = map->chunks_sizes()[i];
@@ -100,12 +102,12 @@ public:
                 size_to_cp = bytes;
             }
 
-            db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Source Address => " << c_addr  << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Source Address => " << &source_addr  << endl;
             db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Destiny Address => " << destiny  << endl;
             db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Size To Copy => " << size_to_cp << " bytes" << endl;
             
             // Copy the data
-            memcpy(destiny, c_addr, size_to_cp);
+            memcpy(destiny, source_addr, size_to_cp);
 
             // Increment the memory of already copied data
             map->data_copied(size_to_cp);
