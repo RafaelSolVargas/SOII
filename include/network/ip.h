@@ -61,7 +61,7 @@ public:
             /// @param offset If is a fragment, the offset
             Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int total_size, 
             unsigned int id, const FragmentFlags & flags, unsigned short offset) 
-            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _id(id), _flags(flags), 
+            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _id(htons(id)), _flags(flags), 
               _offset(offset), _ttl(TIME_TO_LIVE), _protocol(prot), _checksum(0), _src(src), _dst(dst)
             {
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
@@ -72,11 +72,12 @@ public:
                         last_fragment_data = FRAGMENT_MTU;
                     } 
 
-                    _length = last_fragment_data + sizeof(Header);
+                    // We store the length as octets, also calls the function host to network short to converts the little to big
+                    _length = htons((last_fragment_data + sizeof(Header)));
                 } 
                 else 
                 {
-                    _length = total_size + sizeof(Header);
+                    _length = htons((total_size + sizeof(Header)));
                 }
             }
 
@@ -95,7 +96,7 @@ public:
             { 
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
                 {
-                    return _length - sizeof(Header);
+                    return length() - sizeof(Header);
                 }
 
                 return FRAGMENT_MTU;
@@ -107,11 +108,11 @@ public:
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
                 {
                     // Remove the Header of each fragment and use the Header size stored in _length
-                    return (_offset * FRAGMENT_MTU) + _length;
+                    return (_offset * FRAGMENT_MTU) + length();
                 }
 
                 // Other fragments already contains the total _length size
-                return _length;
+                return length();
             }
 
             /// @brief Quant of fragments required to transfer the datagram
@@ -127,7 +128,7 @@ public:
                     return _offset + 1;
                 }
 
-                return (_length + FRAGMENT_MTU - 1) / FRAGMENT_MTU;
+                return (length() + FRAGMENT_MTU - 1) / FRAGMENT_MTU;
             }
 
             /// @brief Total size of this object in the memory
@@ -135,7 +136,7 @@ public:
             { 
                 if (_flags == FragmentFlags::LAST_FRAGMENT) 
                 {
-                    return _length; 
+                    return length(); 
                 }
 
                 return sizeof(Header) + FRAGMENT_MTU; 
@@ -143,12 +144,15 @@ public:
 
             unsigned short flags() { return _flags; }
 
+            unsigned short id() { return ntohs(_id); }
+
             friend Debug & operator<<(Debug & db, const Header & h) {
                 db << "{ihl=" << h._ihl
                 << ",ver=" << h._version
                 << ",tos=" << h._service_type
                 << ",len=" << h._length
-                << ",id="  << h._id
+                << ",lenHeader=" << h.length()
+                << ",id="  << h.id()
                 << ",flg=" << h._flags
                 << ",off=" << h._offset
                 << ",ttl=" << h._ttl
@@ -164,6 +168,9 @@ public:
 
                 return db;
             }
+
+        private:
+            unsigned short length() const { return ntohs(_length); }
 
         protected: 
             unsigned char _ihl:4; // IP Header Length

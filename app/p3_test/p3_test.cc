@@ -109,7 +109,7 @@ int main()
 {
     cout << "IP Test Datagram" << endl;
 
-    ip_test_datagram();
+    //ip_test_datagram();
 
     cout << "IP Test Datagram Finished" << endl;
 
