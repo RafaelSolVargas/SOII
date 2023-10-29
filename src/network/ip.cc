@@ -72,7 +72,7 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
     }
 }
 
-void IP::send_data(const Address & dst, const Protocol & prot, unGetting Lockgned int id, FragmentFlags flags, const void * data, unsigned int data_size) 
+void IP::send_data(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, const void * data, unsigned int data_size) 
 {
     // Allocate an NIC Buffer and create the Header inside it without the data
     NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(dst, prot, id, flags, data_size, data_size, 0);

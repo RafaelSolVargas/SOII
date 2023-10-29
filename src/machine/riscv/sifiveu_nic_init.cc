@@ -17,7 +17,7 @@ SiFiveU_NIC* SiFiveU_NIC::init()
         // Initialize the NIC
         _device = new (SYSTEM) SiFiveU_NIC();
 
-        _device->_rx_buffers_lock = new (SYSTEM) Mutex();
+        _device->_rx_buffers_lock = new (SYSTEM) Semaphore();
 
         // Configure the callbacks handler
         _device->configure_callbacks();

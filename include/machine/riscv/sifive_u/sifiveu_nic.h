@@ -389,7 +389,7 @@ private:
     bool _deleted;
 
     /// @brief Mutex to serialize the access to the received buffers
-    Mutex * _rx_buffers_lock;
+    Semaphore * _rx_buffers_lock;
 
     Configuration _configuration;
     Statistics _statistics;
