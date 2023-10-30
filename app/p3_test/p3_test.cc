@@ -56,11 +56,11 @@ void ip_test_datagram() {
     { 
         cout << "I'm the receiver" << endl;
 
-        unsigned int initial_packages = ip->datagrams_received(); 
+        unsigned int initial_packages = ip->statistics().rx_datagrams; 
 
         cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
 
-        while (ip->datagrams_received() < DATAGRAMS_QUANT + initial_packages) {
+        while (ip->statistics().rx_datagrams < DATAGRAMS_QUANT + initial_packages) {
             Delay(100000);
         }
     }  
@@ -105,23 +105,26 @@ void ip_test_fragmentation() {
 
         memset(data + DATA_SIZE - 1, '0' + 9, 1); // 9 no final
 
-
         cout << data << endl;
 
         data[DATA_SIZE - 2] = '0' + 9;
         data[DATA_SIZE - 1] = '\n';
 
         ip->send(destination_ip, IP::TCP, data, DATA_SIZE);
+
+        while (ip->statistics().tx_datagrams < 1) {
+            Delay(100000);
+        }
     }
     else
     { 
         cout << "I'm the receiver" << endl;
 
-        unsigned int initial_packages = ip->datagrams_received(); 
+        unsigned int initial_packages = ip->statistics().rx_datagrams; 
 
         cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
 
-        while (ip->datagrams_received() < 1 + initial_packages) {
+        while (ip->statistics().rx_datagrams < 1 + initial_packages) {
             Delay(100000);
         }
     }  

@@ -40,7 +40,7 @@ void IP::handle_datagram(Header * datagram)
         db<IP>(TRC) << receivedData[index];
     }
 
-    _datagrams_received++;
+    _stats.rx_datagrams++;
 }
 
 void IP::handle_fragmentation(Header * fragment) 

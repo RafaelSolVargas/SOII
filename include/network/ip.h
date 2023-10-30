@@ -63,11 +63,11 @@ protected:
         Priority priority;
     };
 
-    // Class that will be stored in sending queue
+    // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
     class DatagramBufferedRX 
     {
     public:
-        DatagramBufferedRX(const Configuration & config, MemAllocationMap * map) : _link(this), _configuration(config), _allocation_map(map) { }
+        DatagramBufferedRX(const Configuration & config, MemAllocationMap * map) : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
 
         typedef typename Queue<DatagramBufferedRX>::Element Element;
     
@@ -86,6 +86,17 @@ protected:
     };
 
     typedef DatagramBufferedRX::Queue Queue;
+
+    struct Statistics
+    {
+        typedef unsigned int Count;
+
+        Statistics(): rx_datagrams(0), tx_datagrams(0) {}
+
+        Count rx_datagrams;
+        Count tx_datagrams;
+    };
+
 
 public:
     class Header
@@ -245,6 +256,7 @@ private:
     typedef IPDefinitions::MAC_Address MAC_Address;
     typedef IPDefinitions::BufferInfo BufferInfo;
     typedef IPDefinitions::AllocationMap AllocationMap;
+    typedef IPDefinitions::Statistics Statistics;
 
 public:
     typedef IPDefinitions::Address Address;
@@ -255,6 +267,7 @@ public:
     
 public:
     static IP* init(NIC<Ethernet> * nic);
+    ~IP();
 
     /// @brief Send the data directly from the array, it's required to be contiguous
     /// @param dst Destiny Address to send data
@@ -273,7 +286,7 @@ public:
 
     Address address() { return _address; }
 
-    unsigned int datagrams_received() { return _datagrams_received; }  
+    const Statistics & statistics() { return _stats; }
 
 protected:
     IP(NIC<Ethernet> * nic);
@@ -310,19 +323,34 @@ private:
     static void class_nic_callback(BufferInfo * bufferInfo);
     void nic_callback(BufferInfo * bufferInfo);
 
+// Methods for sending queue thread
+private:
+    int sending_queue_function();
+    static int class_sending_queue_function();
+
+    void configure_sending_queue();
+
 private:
     MAC_Address convert_ip_to_mac_address(const Address & address);
     Address convert_mac_to_ip_address(const MAC_Address & address);
     Address _address;
-    static unsigned int _datagram_count;
+
     static IP * _ip;
     SiFiveU_NIC * _nic;
 
+    Statistics _stats;
+
     BuffersHandler<char> nw_buffers;
 
-    unsigned int _datagrams_received;
-
+    /// @brief Queue of DatagramBufferedRX objects to be sended to NIC
     Queue _queue;
+
+    /// @brief Thread to call all the callbacks with the Datagrams that was buffered
+    Thread * _sending_queue_thread;
+    /// @brief Semaphore to block the execution of the Thread
+    Semaphore * _semaphore;
+    /// @brief Boolean to determine when the Thread should stop
+    bool _deleted;
 };
 
 __END_SYS

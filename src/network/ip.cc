@@ -32,8 +32,6 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
 
     AllocationMap * map = reinterpret_cast<AllocationMap *>(buffer_ptr);
 
-    map->log_allocation();
-
     unsigned long total_size = map->original_size();
 
     unsigned int id = get_next_id();
@@ -72,9 +70,11 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
 
         DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(config, map); 
 
+        // Insert into sending queue the information of this Datagram
         _queue.insert(datagram_buffered->link());
 
-        send_buffered_with_fragmentation(datagram_buffered->config().address, datagram_buffered->config().protocol, id, map);
+        // Releases the Thread to send the Datagram
+        _semaphore->v();
     }
 }
 
@@ -153,6 +153,44 @@ FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned i
     return buffer;
 }
 
+int IP::class_sending_queue_function() 
+{
+    return _ip->sending_queue_function();
+}
+
+
+int IP::sending_queue_function() 
+{
+    db<IP>(INF) << "IP::SendingQueueThread => Initializing" << endl;
+
+    while (!_deleted) 
+    {
+        db<IP>(INF) << "IP::SendingQueueThread => Waiting for next Datagram" << endl;
+
+        _semaphore->p();
+
+        if (_deleted) break;
+
+        DatagramBufferedRX * buffered_datagram = _queue.remove()->object();
+
+        Configuration config = buffered_datagram->config();
+
+        unsigned int id = get_next_id();
+
+        db<IP>(INF) << "IP::SendingQueueThread => Starting Fragmentation of Datagram " << id << endl;
+
+        send_buffered_with_fragmentation(config.address, config.protocol, id, buffered_datagram->map());
+
+        _stats.tx_datagrams++;
+
+        delete buffered_datagram;
+    }
+
+    db<IP>(INF) << "IP::~SendingThread()" << endl;
+
+    return 1;
+}
+
 unsigned int IP::get_next_id() 
 {
     // TODO -> Protect with mutex
@@ -184,8 +222,6 @@ IP::MAC_Address IP::convert_ip_to_mac_address(const Address & address)
         mac[5] = 0x8;
     }
 
-    //db<IP>(TRC) << "IP::Converting IP Address=" << address << " to MAC=" << mac << endl;
-
     return mac;
 }
 
@@ -212,8 +248,6 @@ IP::Address IP::convert_mac_to_ip_address(const MAC_Address & address)
     {
         ip[3] = 0x2;
     }
-
-    //db<IP>(TRC) << "IP::Converting MAC Address=" << address << " to IP=" << ip << endl;
 
     return ip;
 }
