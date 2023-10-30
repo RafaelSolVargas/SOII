@@ -13,6 +13,8 @@ template<> struct Traits<IP>: public Traits<Debug>
     static const bool warning = true;
     static const bool info    = true;
     static const bool trace   = true;
+    
+    typedef RR Criterion;
 };
 
 __END_SYS

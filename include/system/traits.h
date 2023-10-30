@@ -101,6 +101,7 @@ class System;
 class Application;
 
 class Thread;
+class DatagramBufferedRX;
 class Active;
 class Periodic_Thread;
 class RT_Thread;

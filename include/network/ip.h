@@ -7,6 +7,7 @@
 #include <network/ethernet.h>
 #include <utility/list.h>
 #include <system.h>
+#include <utility/queue.h>
 
 __BEGIN_SYS
 
@@ -41,6 +42,52 @@ public:
         LAST_FRAGMENT = 0b000,
     };
 
+protected:
+    typedef NonCBuffer::AllocationMap AllocationMap;
+
+    // Priority for sending datagrams, will use the Criterion defined for the Threads
+    typedef Traits<Thread>::Criterion Priority;
+    enum {
+        HIGH    = Priority::HIGH,
+        NORMAL  = Priority::NORMAL,
+        LOW     = Priority::LOW,
+    };
+
+    // IP Datagram Configuration
+    struct Configuration 
+    {
+        Configuration(const Address & dst, const Protocol & prot, const Priority & p = Priority::NORMAL) : address(dst), protocol(prot), priority(p) { }
+
+        Address address;
+        Protocol protocol;
+        Priority priority;
+    };
+
+    // Class that will be stored in sending queue
+    class DatagramBufferedRX 
+    {
+    public:
+        DatagramBufferedRX(const Configuration & config, MemAllocationMap * map) : _link(this), _configuration(config), _allocation_map(map) { }
+
+        typedef typename Queue<DatagramBufferedRX>::Element Element;
+    
+        typedef Priority Criterion;
+
+        typedef Ordered_Queue<DatagramBufferedRX, Priority, Scheduler<DatagramBufferedRX>::Element> Queue;
+        
+        Queue::Element * link() { return &_link; }
+        Configuration config() const { return _configuration; }
+        MemAllocationMap * map() { return _allocation_map; }
+
+    private:
+        Queue::Element _link;
+        Configuration _configuration;
+        MemAllocationMap * _allocation_map;
+    };
+
+    typedef DatagramBufferedRX::Queue Queue;
+
+public:
     class Header
     {
         public: 
@@ -197,7 +244,7 @@ class IP : public IPDefinitions
 private:
     typedef IPDefinitions::MAC_Address MAC_Address;
     typedef IPDefinitions::BufferInfo BufferInfo;
-    typedef NonCBuffer::AllocationMap AllocationMap;
+    typedef IPDefinitions::AllocationMap AllocationMap;
 
 public:
     typedef IPDefinitions::Address Address;
@@ -274,6 +321,8 @@ private:
     BuffersHandler<char> nw_buffers;
 
     unsigned int _datagrams_received;
+
+    Queue _queue;
 };
 
 __END_SYS

@@ -68,7 +68,13 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
     // Fragmentation will be required 
     else
     {
-        send_buffered_with_fragmentation(dst, prot, id, map);
+        Configuration config = Configuration(dst, prot, HIGH); 
+
+        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(config, map); 
+
+        _queue.insert(datagram_buffered->link());
+
+        send_buffered_with_fragmentation(datagram_buffered->config().address, datagram_buffered->config().protocol, id, map);
     }
 }
 
