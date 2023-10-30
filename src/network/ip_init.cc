@@ -8,7 +8,6 @@
 
 __BEGIN_SYS
 
-unsigned int IP::_datagram_count = 0;
 IP* IP::_ip;
 
 IP* IP::init(NIC<Ethernet> * nic) 

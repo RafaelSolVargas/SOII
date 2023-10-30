@@ -49,7 +49,7 @@ void ip_test_datagram() {
             data[MTU - 2] = '0' + 9;
             data[MTU - 1] = '\n';
     
-            ip->send(destination_ip, IP::TCP, data, MTU);
+            ip->send(IP::SendingParameters(destination_ip, IP::TCP, IP::Priority::HIGH), data, MTU);
         }
     }
     else
@@ -110,7 +110,7 @@ void ip_test_fragmentation() {
         data[DATA_SIZE - 2] = '0' + 9;
         data[DATA_SIZE - 1] = '\n';
 
-        ip->send(destination_ip, IP::TCP, data, DATA_SIZE);
+        ip->send(IP::SendingParameters(destination_ip, IP::TCP, IP::Priority::HIGH), data, DATA_SIZE);
 
         while (ip->statistics().tx_datagrams < 1) {
             Delay(100000);

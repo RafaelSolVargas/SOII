@@ -26,7 +26,6 @@ protected:
     static const unsigned int PROTOCOL = Ethernet::PROTO_IP;
 
 public:
-    // RFC 1700 Protocols
     typedef unsigned char Protocol;
     enum {
         ICMP    = 0x01,
@@ -42,9 +41,6 @@ public:
         LAST_FRAGMENT = 0b000,
     };
 
-protected:
-    typedef NonCBuffer::AllocationMap AllocationMap;
-
     // Priority for sending datagrams, will use the Criterion defined for the Threads
     typedef Traits<Thread>::Criterion Priority;
     enum {
@@ -53,21 +49,53 @@ protected:
         LOW     = Priority::LOW,
     };
 
-    // IP Datagram Configuration
-    struct Configuration 
-    {
-        Configuration(const Address & dst, const Protocol & prot, const Priority & p = Priority::NORMAL) : address(dst), protocol(prot), priority(p) { }
 
-        Address address;
+    // IP Datagram Parameters
+    struct SendingParameters 
+    {
+        SendingParameters(const Address & dst, const Protocol & prot, const Priority & p = Priority::NORMAL) : destiny(dst), protocol(prot), priority(p) { }
+
+        friend Debug & operator<<(Debug & db, const SendingParameters & p) {
+            db << "{dst=" << p.destiny
+               << ",prot=" <<  p.protocol
+               << ",priority=" <<  p.priority
+               << "}";
+            return db;
+        }
+
+        Address destiny;
         Protocol protocol;
         Priority priority;
     };
+
+    struct Statistics
+    {
+        typedef unsigned int Count;
+
+        Statistics(): rx_datagrams(0), tx_datagrams(0), next_id(0) {}
+
+        friend Debug & operator<<(Debug & db, const Statistics & s) {
+            db << "{rx_datagrams=" << s.rx_datagrams
+               << ",tx_datagrams=" <<  s.tx_datagrams
+               << ",next_id=" <<  s.next_id
+               << "}";
+            return db;
+        }
+
+        Count rx_datagrams;
+        Count tx_datagrams;
+        Count next_id;
+    };
+
+protected:
+    typedef NonCBuffer::AllocationMap AllocationMap;
+
 
     // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
     class DatagramBufferedRX 
     {
     public:
-        DatagramBufferedRX(const Configuration & config, MemAllocationMap * map) : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
+        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map) : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
 
         typedef typename Queue<DatagramBufferedRX>::Element Element;
     
@@ -76,27 +104,16 @@ protected:
         typedef Ordered_Queue<DatagramBufferedRX, Priority, Scheduler<DatagramBufferedRX>::Element> Queue;
         
         Queue::Element * link() { return &_link; }
-        Configuration config() const { return _configuration; }
+        SendingParameters config() const { return _configuration; }
         MemAllocationMap * map() { return _allocation_map; }
 
     private:
         Queue::Element _link;
-        Configuration _configuration;
+        SendingParameters _configuration;
         MemAllocationMap * _allocation_map;
     };
 
     typedef DatagramBufferedRX::Queue Queue;
-
-    struct Statistics
-    {
-        typedef unsigned int Count;
-
-        Statistics(): rx_datagrams(0), tx_datagrams(0) {}
-
-        Count rx_datagrams;
-        Count tx_datagrams;
-    };
-
 
 public:
     class Header
@@ -274,13 +291,13 @@ public:
     /// @param prot Protocol being used (e.g TCP)
     /// @param data Pointer to the data
     /// @param size Bytes to copy
-    void send(const Address & dst, const Protocol & prot, const void * data, unsigned int size);
+    void send(SendingParameters parameters, const void * data, unsigned int size);
 
     /// @brief Sends the data preallocated inside an NonCBuffers accessed by the BuffersHandler class
     /// @param dst Destiny Address to send data
     /// @param prot Protocol being used (e.g TCP)
     /// @param buffer_ptr Pointer returned by the BuffersHandler::alloc_nc() method 
-    void send_buffered_data(const Address & dst, const Protocol & prot, void * buffer_ptr);
+    void send_buffered_data(SendingParameters parameters, void * buffer_ptr);
 
     SiFiveU_NIC * nic() { return _nic; }
 

@@ -5,16 +5,16 @@
 
 __BEGIN_SYS
 
-void IP::send(const Address & dst, const Protocol & prot, const void * data, unsigned int size) 
+void IP::send(SendingParameters parameters, const void * data, unsigned int size) 
 {
-    db<IP>(TRC) << "IP::send(dst= " << dst << ",size=" << size << ",data=" << data << ")" << endl;
+    db<IP>(TRC) << "IP::send(parameters= " << parameters << ",size=" << size << ",data=" << data << ")" << endl;
 
     // If the data fits in an fragment, send it directly
     if (size <= Header::FRAGMENT_MTU) 
     {
         unsigned int id = get_next_id();
 
-        send_data(dst, prot, id, FragmentFlags::DATAGRAM, data, size);
+        send_data(parameters.destiny, parameters.protocol, id, FragmentFlags::DATAGRAM, data, size);
 
         return;
     }
@@ -23,12 +23,12 @@ void IP::send(const Address & dst, const Protocol & prot, const void * data, uns
     void * buffered_data_ptr = nw_buffers.alloc_nc(const_cast<char*>(reinterpret_cast<const char*>(data)), size);
     
     // TODO -> Create an queue and a Thread to send the data and return it before actually sending to the NIC
-    send_buffered_data(dst, prot, buffered_data_ptr);
+    send_buffered_data(parameters, buffered_data_ptr);
 }
 
-void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * buffer_ptr) 
+void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr) 
 {   
-    db<IP>(TRC) << "IP::send_buffered_data(dst= " << dst << ",buffer_ptr=" << buffer_ptr << ")" << endl;
+    db<IP>(TRC) << "IP::send_buffered_data(parameters= " << parameters << ",buffer_ptr=" << buffer_ptr << ")" << endl;
 
     AllocationMap * map = reinterpret_cast<AllocationMap *>(buffer_ptr);
 
@@ -43,7 +43,7 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
 
         unsigned long data_size = map->chunks_sizes()[0];
 
-        send_data(dst, prot, id, FragmentFlags::DATAGRAM, data_ptr, data_size);
+        send_data(parameters.destiny, parameters.protocol, id, FragmentFlags::DATAGRAM, data_ptr, data_size);
     
         return;
     }
@@ -51,7 +51,7 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
     else if (total_size <= Header::FRAGMENT_MTU) 
     {
         // Allocate an NIC Buffer and create the Header inside it without the data
-        NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(dst, prot, id, FragmentFlags::DATAGRAM, total_size, total_size, 0);
+        NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(parameters.destiny, parameters.protocol, id, FragmentFlags::DATAGRAM, total_size, total_size, 0);
 
         // Copy the data to the Header
         Header * header = reinterpret_cast<Header *>(buffer->data());
@@ -66,9 +66,7 @@ void IP::send_buffered_data(const Address & dst, const Protocol & prot, void * b
     // Fragmentation will be required 
     else
     {
-        Configuration config = Configuration(dst, prot, HIGH); 
-
-        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(config, map); 
+        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map); 
 
         // Insert into sending queue the information of this Datagram
         _queue.insert(datagram_buffered->link());
@@ -173,13 +171,13 @@ int IP::sending_queue_function()
 
         DatagramBufferedRX * buffered_datagram = _queue.remove()->object();
 
-        Configuration config = buffered_datagram->config();
+        SendingParameters config = buffered_datagram->config();
 
         unsigned int id = get_next_id();
 
         db<IP>(INF) << "IP::SendingQueueThread => Starting Fragmentation of Datagram " << id << endl;
 
-        send_buffered_with_fragmentation(config.address, config.protocol, id, buffered_datagram->map());
+        send_buffered_with_fragmentation(config.destiny, config.protocol, id, buffered_datagram->map());
 
         _stats.tx_datagrams++;
 
@@ -195,7 +193,7 @@ unsigned int IP::get_next_id()
 {
     // TODO -> Protect with mutex
 
-    return _datagram_count++;
+    return _ip->_stats.next_id++;
 }
 
 IP::MAC_Address IP::convert_ip_to_mac_address(const Address & address) 
