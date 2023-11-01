@@ -44,6 +44,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     GEM::write_value(R_NW_CTRL, R_NW_CTRL_B_CLR_STATS_REGS);
     
     GEM::apply_and_mask(R_NW_CFG, R_NW_CFG_32_WIDTH_SIZE);
+    GEM::apply_or_mask(R_NW_CFG, R_NW_CFG_B_EN_CHECKSUM);
 
     GEM::write_value(R_RECEIVE_STATS, 0x0000000F); 
     GEM::write_value(R_TRANSMIT_STATS, 0x000001FF);

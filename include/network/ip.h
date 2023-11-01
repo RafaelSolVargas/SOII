@@ -118,148 +118,107 @@ protected:
 public:
     class Header
     {
-        public: 
-            static const unsigned int SERVICE_TYPE = 0;
-            static const unsigned int VERSION = 4;
-            static const unsigned int HEADER_LENGTH = 5; // 5 bytes
-            static const unsigned int TIME_TO_LIVE = 10;
+    public: 
+        static const unsigned int SERVICE_TYPE = 0;
+        static const unsigned int VERSION = 4;
+        static const unsigned int HEADER_LENGTH = 5; // 5 bytes
+        static const unsigned int TIME_TO_LIVE = 10;
 
-            static const unsigned int FRAGMENT_MTU = NIC<Ethernet>::MTU - (HEADER_LENGTH * 4);
+        static const unsigned int FRAGMENT_MTU = NIC<Ethernet>::MTU - (HEADER_LENGTH * 4);
 
-            /// @brief Creates an Datagram with only the Header
-            /// @param src Source IP Address
-            /// @param dst Destination IP Address
-            /// @param prot Protocol being used
-            /// @param total_size Total size of the datagram
-            /// @param id Identifier of datagram
-            /// @param flags Flag of the datagram
-            /// @param offset If is a fragment, the offset
-            Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int total_size, 
-            unsigned int id, const FragmentFlags & flags, unsigned short offset) 
-            : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _id(htons(id)), _flags(flags), 
-              _offset(offset), _ttl(TIME_TO_LIVE), _protocol(prot), _checksum(0), _src(src), _dst(dst)
+        /// @brief Creates an Datagram with only the Header
+        /// @param src Source IP Address
+        /// @param dst Destination IP Address
+        /// @param prot Protocol being used
+        /// @param total_size Size to be stored in that datagram
+        /// @param id Identifier of datagram
+        /// @param flags Flag of the datagram
+        /// @param offset If is a fragment, the offset
+        Header(const Address & src, const Address & dst, const Protocol & prot, unsigned int total_size, 
+        unsigned int id, const FragmentFlags & flags, unsigned short offset) 
+        : _ihl(HEADER_LENGTH), _version(VERSION),  _service_type(SERVICE_TYPE), _id(htons(id)), _flags(flags), 
+            _offset(htons(offset)), _ttl(TIME_TO_LIVE), _protocol(prot), _checksum(0), _src(src), _dst(dst)
+        {
+            if (flags == FragmentFlags::LAST_FRAGMENT) 
             {
-                if (_flags == FragmentFlags::LAST_FRAGMENT) 
+                unsigned int last_fragment_data = (total_size % FRAGMENT_MTU);
+                if (last_fragment_data == 0) 
                 {
-                    unsigned int last_fragment_data = (total_size % FRAGMENT_MTU);
-                    if (last_fragment_data == 0) 
-                    {
-                        last_fragment_data = FRAGMENT_MTU;
-                    } 
-
-                    // We store the length as octets, also calls the function host to network short to converts the little to big
-                    _length = htons((last_fragment_data + sizeof(Header)));
+                    last_fragment_data = FRAGMENT_MTU;
                 } 
-                else 
-                {
-                    _length = htons((total_size + sizeof(Header)));
-                }
+
+                // Calls the function host to network short to converts the little to big
+                _length = htons((last_fragment_data + sizeof(Header)));
+            } 
+            else 
+            {
+                _length = htons((FRAGMENT_MTU + sizeof(Header)));
             }
+        }
 
-            /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
-            /// a lot of caution to handle this pointer in a contiguous way. 
-            void * data_address() { return reinterpret_cast<char *>(this) + sizeof(*this);  }
+        /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
+        /// a lot of caution to handle this pointer in a contiguous way. 
+        void * data_address() { return reinterpret_cast<char *>(this) + sizeof(*this);  }
 
-            /// @brief Returns the pointer for the start of a data of a offset Fragment
-            void * data_address_with_offset(unsigned int offset) 
-            { 
-                return reinterpret_cast<char*>(data_address()) + (offset * FRAGMENT_MTU);  
-            }
+        /// @brief Returns the pointer for the start of a data of a offset Fragment
+        void * data_address_with_offset(unsigned int offset) 
+        { 
+            return reinterpret_cast<char*>(data_address()) + (offset * FRAGMENT_MTU);  
+        }
 
-            /// @brief Get the data size of this fragment or datagram
-            unsigned int data_size() const
-            { 
-                if (_flags == FragmentFlags::LAST_FRAGMENT) 
-                {
-                    return length() - sizeof(Header);
-                }
+        /// @brief Get the data size of this fragment or datagram
+        unsigned int data_size() const
+        { 
+            return length() - sizeof(Header);
+        }
 
-                return FRAGMENT_MTU;
-            }
+        /// @brief Total size of this object in the memory
+        unsigned int object_size() const 
+        { 
+            return _length;
+        }
 
-            /// @brief Total length of the original datagram, including Header
-            unsigned int total_length() const
-            { 
-                if (_flags == FragmentFlags::LAST_FRAGMENT) 
-                {
-                    // Remove the Header of each fragment and use the Header size stored in _length
-                    return (_offset * FRAGMENT_MTU) + length();
-                }
+        unsigned short flags() const { return _flags; }
+        unsigned short id() const { return ntohs(_id); }
+        unsigned short offset() const { return ntohs(_offset); }
 
-                // Other fragments already contains the total _length size
-                return length();
-            }
+        friend Debug & operator<<(Debug & db, const Header & h) {
+            db << "{ihl=" << h._ihl
+            << ",ver=" << h._version
+            << ",tos=" << h._service_type
+            << ",len=" << h._length
+            << ",lenHeader=" << h.length()
+            << ",id="  << h.id()
+            << ",flg=" << h.flags()
+            << ",off=" << h.offset()
+            << ",ttl=" << h._ttl
+            << ",prot=" << h._protocol
+            << ",chk=" << h._checksum
+            << ",src=" << h._src
+            << ",dst=" << h._dst
+            << ",data_size=" << h.data_size()
+            << ",object_size=" << h.object_size()
+            << "}";
 
-            /// @brief Quant of fragments required to transfer the datagram
-            unsigned int quant_fragments() const
-            { 
-                if (_flags == FragmentFlags::DATAGRAM) 
-                {
-                    return 1;
-                }
+            return db;
+        }
 
-                if (_flags == FragmentFlags::LAST_FRAGMENT) 
-                {
-                    return _offset + 1;
-                }
+    private:
+        unsigned short length() const { return ntohs(_length); }
 
-                return (length() + FRAGMENT_MTU - 1) / FRAGMENT_MTU;
-            }
-
-            /// @brief Total size of this object in the memory
-            unsigned int object_size() const 
-            { 
-                if (_flags == FragmentFlags::LAST_FRAGMENT) 
-                {
-                    return length(); 
-                }
-
-                return sizeof(Header) + FRAGMENT_MTU; 
-            }
-
-            unsigned short flags() { return _flags; }
-
-            unsigned short id() const { return ntohs(_id); }
-
-            friend Debug & operator<<(Debug & db, const Header & h) {
-                db << "{ihl=" << h._ihl
-                << ",ver=" << h._version
-                << ",tos=" << h._service_type
-                << ",len=" << h._length
-                << ",lenHeader=" << h.length()
-                << ",id="  << h.id()
-                << ",flg=" << h._flags
-                << ",off=" << h._offset
-                << ",ttl=" << h._ttl
-                << ",prot=" << h._protocol
-                << ",chk=" << h._checksum
-                << ",src=" << h._src
-                << ",dst=" << h._dst
-                << ",data_size=" << h.data_size()
-                << ",total_length=" << h.total_length()
-                << ",quant_fragments=" << h.quant_fragments()
-                << ",object_size=" << h.object_size()
-                << "}";
-
-                return db;
-            }
-
-        private:
-            unsigned short length() const { return ntohs(_length); }
-
-        protected: 
-            unsigned char _ihl:4; // IP Header Length
-            unsigned char _version:4; // IP Version
-            unsigned char _service_type:8; // Type of Service
-            unsigned short _length:16;     // Total length of datagram, header + data
-            unsigned short _id:16;     // Datagram ID
-            unsigned char _flags:3; // Flags (Reserved, DF, MF)
-            unsigned short _offset:13;     // Fragment offset
-            unsigned char _ttl:4; // Time To Live
-            Protocol _protocol;
-            unsigned short _checksum:16; // Header checksum (RFC 1071)
-            Address _src; // Source IP address
-            Address _dst; // Destination IP address
+    protected: 
+        unsigned char _ihl:4; // IP Header Length
+        unsigned char _version:4; // IP Version
+        unsigned char _service_type:8; // Type of Service
+        unsigned short _length:16;     // Total length of datagram, header + data
+        unsigned short _id:16;     // Datagram ID
+        unsigned char _flags:3; // Flags (Reserved, DF, MF)
+        unsigned short _offset:13;     // Fragment offset
+        unsigned char _ttl:4; // Time To Live
+        Protocol _protocol;
+        unsigned short _checksum:16; // Header checksum (RFC 1071)
+        Address _src; // Source IP address
+        Address _dst; // Destination IP address
     } __attribute__((packed, may_alias));
 
     static const unsigned int fragment_mtu() { return Header::FRAGMENT_MTU; }

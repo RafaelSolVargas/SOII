@@ -42,6 +42,7 @@ public:
     #define R_NW_CFG_B_PROMISC (1 << 4)
     #define R_NW_CFG_B_REM_FCS (1 << 17)
     #define R_NW_CFG_32_WIDTH_SIZE (0 << 21)
+    #define R_NW_CFG_B_EN_CHECKSUM (1 << 24)
 
     #define R_NET_STATS 0x0008
     #define R_DMA_CFG 0x010
