@@ -66,11 +66,76 @@ void ip_test_datagram() {
     }  
 }
 
+
+void ip_test_fragmentation() {
+    SiFiveU_NIC * nic = SiFiveU_NIC::init();
+    IP * ip = IP::init(nic);
+
+    unsigned int FRAG_MTU = ip->fragment_mtu();
+
+    unsigned const int DATA_SIZE = FRAG_MTU * 5 - 200;
+    
+    char data[DATA_SIZE];
+
+    IP::Address destination_ip = ip->broadcast();
+    bool is_sender = (ip->address()[3] % 2);
+
+    if (is_sender) 
+    { 
+        cout << " I'm the sender " << endl;
+
+        Delay(100000);
+
+        memset(data, '0' + 5, DATA_SIZE);
+        
+        memset(data + (FRAG_MTU * 0), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 0) + 1, '0' + 1, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 1) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 1), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 1) + 1, '0' + 2, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 2) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 2), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 2) + 1, '0' + 3, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 3) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + (FRAG_MTU * 3), '0' + 9, 1); // 9 no começo
+        memset(data + (FRAG_MTU * 3) + 1, '0' + 4, FRAG_MTU); // Valor no meio
+        memset(data + (FRAG_MTU * 4) - 1, '0' + 9, 1); // 9 no final
+
+        memset(data + DATA_SIZE - 1, '0' + 9, 1); // 9 no final
+
+        cout << data << endl;
+
+        data[DATA_SIZE - 2] = '0' + 9;
+        data[DATA_SIZE - 1] = '\n';
+
+        ip->send(IP::SendingParameters(destination_ip, IP::TCP, IP::Priority::HIGH), data, DATA_SIZE);
+
+        while (ip->statistics().tx_datagrams < 1) {
+            Delay(100000);
+        }
+    }
+    else
+    { 
+        cout << "I'm the receiver" << endl;
+
+        unsigned int initial_packages = ip->statistics().rx_datagrams; 
+
+        cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
+
+        while (ip->statistics().rx_datagrams < 1 + initial_packages) {
+            Delay(100000);
+        }
+    }  
+}
+
 int main()
 {
     cout << "IP Test Datagram" << endl;
 
-    //ip_test_datagram();
+    // ip_test_datagram();
 
     cout << "IP Test Datagram Finished" << endl;
 

@@ -144,7 +144,7 @@ class Network;
 class ELP;
 class TSTPOE;
 class TSTP;
-template<typename NIC, typename Network, unsigned int HTYPE> class ARP;
+class ARP;
 class IP;
 class ICMP;
 class UDP;
