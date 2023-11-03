@@ -77,9 +77,11 @@ void ip_test_fragmentation() {
     
     char data[DATA_SIZE];
 
-    IP::Address destination_ip = ip->broadcast();
+    IP::Address destination_ip = IP::Address("192.168.0.2");
     bool is_sender = (ip->address()[3] % 2);
 
+    // Sender IP = 192.168.0.1
+    // Receiver IP = 192.168.0.2 
     if (is_sender) 
     { 
         cout << " I'm the sender " << endl;
@@ -105,8 +107,6 @@ void ip_test_fragmentation() {
         memset(data + (FRAG_MTU * 4) - 1, '0' + 9, 1); // 9 no final
 
         memset(data + DATA_SIZE - 1, '0' + 9, 1); // 9 no final
-
-        cout << data << endl;
 
         data[DATA_SIZE - 2] = '0' + 9;
         data[DATA_SIZE - 1] = '\n';

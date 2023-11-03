@@ -120,7 +120,7 @@ template<> struct Traits<System>: public Traits<Build>
 
 template<> struct Traits<NicBuffers>: public Traits<Build>
 {
-    static const bool debugged = true;
+    static const bool debugged = false;
 
     static const bool error   = true;
     static const bool warning = true;
@@ -151,7 +151,7 @@ template<> struct Traits<Scheduler<Thread>>: public Traits<Build>
 
 template<> struct Traits<Synchronizer>: public Traits<Build>
 {
-    static const bool enabled = Traits<System>::multithread;
+    static const bool enabled = false;
 
     static const bool debugged = false;
 };

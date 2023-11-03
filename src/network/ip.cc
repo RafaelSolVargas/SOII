@@ -119,11 +119,11 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 
         nw_buffers.copy_nc(map, header->data_address(), fragment_size);
 
-        char data_to_print[fragment_size];
+        //char data_to_print[fragment_size];
 
-        memcpy(data_to_print, header->data_address(), fragment_size);
+        //memcpy(data_to_print, header->data_address(), fragment_size);
 
-        db<IP>(TRC) << "IP::Fragment[" << offset << "]" << " >> " << data_to_print << endl;
+        //db<IP>(TRC) << "IP::Fragment[" << offset << "]" << " >> " << data_to_print << endl;
 
         _nic->send(buffer);
 
@@ -140,7 +140,7 @@ FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned i
     unsigned int required_size = data_size + sizeof(Header);
 
     // Get the MAC Address of the IP Address
-    MAC_Address dst_mac = convert_ip_to_mac_address(dst);
+    MAC_Address dst_mac = _arp->resolve(dst);
 
     // Preallocate an buffer to use it for sending the package 
     NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(dst_mac, PROTOCOL, required_size);
@@ -198,56 +198,27 @@ unsigned int IP::get_next_id()
 
 IP::MAC_Address IP::convert_ip_to_mac_address(const Address & address) 
 {
-    MAC_Address mac;
-    mac[0] = 0x56;
-    mac[1] = 0x34;
-    mac[2] = 0x12;
-    mac[3] = 0x0;
-    mac[4] = 0x54;
-
-    Address ip;
-    ip[0] = 0x44;
-    ip[1] = 0x44;
-    ip[2] = 0x0;
-    ip[3] = 0x1;
-
-    if (address == ip) 
+    // :8 -> .2
+    // :9 -> .1
+    if (address == Address("192.168.0.1")) 
     {
-        mac[5] = 0x9;
+        return MAC_Address("86:52:18:0:84:9");
     } 
-    else
+    else 
     {
-        mac[5] = 0x8;
-    }
-
-    return mac;
+        return MAC_Address("86:52:18:0:84:8");
+    } 
 }
 
 IP::Address IP::convert_mac_to_ip_address(const MAC_Address & address) 
 {
-    Address ip;
-    ip[0] = 0x44;
-    ip[1] = 0x44;
-    ip[2] = 0x0;
-
-    MAC_Address mac;
-    mac[0] = 0x56;
-    mac[1] = 0x34;
-    mac[2] = 0x12;
-    mac[3] = 0x0;
-    mac[4] = 0x54;
-    mac[5] = 0x9;
-
-    if (address == mac)  
+    if (address == MAC_Address("86:52:18:0:84:9")) 
     {
-        ip[3] = 0x1;
+        return Address("192.168.0.1");
     } 
-    else
-    {
-        ip[3] = 0x2;
+    else {
+        return Address("192.168.0.2");
     }
-
-    return ip;
 }
 
 __END_SYS

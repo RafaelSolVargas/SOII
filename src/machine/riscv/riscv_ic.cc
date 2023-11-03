@@ -34,8 +34,10 @@ void IC::dispatch()
 {
     Interrupt_Id id = int_id();
 
-    if((id != INT_SYS_TIMER) || Traits<IC>::hysterically_debugged)
-        db<IC, System>(TRC) << "IC::dispatch(i=" << id << ") [sp=" << CPU::sp() << "]" << endl;
+    if((id != INT_SYS_TIMER) || Traits<IC>::hysterically_debugged) 
+    {
+        //db<IC, System>(TRC) << "IC::dispatch(i=" << id << ") [sp=" << CPU::sp() << "]" << endl;
+    }
 
     if(id == INT_SYS_TIMER)
         Timer::reset(); // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
@@ -47,7 +49,7 @@ void IC::dispatch()
 
 void IC::int_not(Interrupt_Id id)
 {
-    db<IC, System>(TRC) << "IC::int_not(i=" << id << ")" << endl;
+    //db<IC, System>(TRC) << "IC::int_not(i=" << id << ")" << endl;
     if(Traits<Build>::hysterically_debugged)
         Machine::panic();
     

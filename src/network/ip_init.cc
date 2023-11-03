@@ -28,6 +28,9 @@ IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic))
     // Get the IP from the MAC Address
     _address = convert_mac_to_ip_address(_nic->address());
 
+    db<IP>(TRC) << "MAC => " << _nic->address() << endl;
+    db<IP>(TRC) << "IP => " << _address << endl;
+
     configure_sending_queue();
 
     // Configure the callback to be called when the NIC receive frames
