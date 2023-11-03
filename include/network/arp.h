@@ -4,7 +4,8 @@
 #include "machine/riscv/sifive_u/sifiveu_nic.h"
 #include "ethernet.h"
 #include "utility/hash.h"
-#include "ip.h"
+#include "time.h"
+#include "synchronizer.h"
 
 __BEGIN_SYS
 
@@ -12,13 +13,122 @@ class ARPDefinitions
 {
 protected:
     typedef SiFiveU_NIC::Address MAC_Address;
-    typedef IP::Address Net_Address;
+    typedef NIC_Common::Address<4> Net_Address;
 
     static const unsigned int Net_Protocol = Ethernet::PROTO_IP;
     static const unsigned int NET_ENTRIES = 10;
 
     // ARP Protocol for NIC
     static const unsigned int PROTOCOL = Ethernet::PROTO_ARP;
+
+private:
+    static const unsigned int ARP_TIMEOUT = 10;
+
+    class WaitingResolutionItem 
+    {
+    private:
+        typedef Functor_Handler<WaitingResolutionItem> Timeout_Handler;
+
+    public:
+        WaitingResolutionItem(const Net_Address & net_address) : _link(this)
+        {
+            _resolved = false;
+            
+            _destroyed = false;
+
+            _searched_address = net_address;
+
+            _lock = new (SYSTEM) Mutex();
+
+            _sem = new (SYSTEM) Semaphore(0);
+
+            _func_handler = new (SYSTEM) Timeout_Handler(handle_timeout, this);
+
+            _alarm = new (SYSTEM) Alarm(Microsecond(Second(ARP_TIMEOUT)), _func_handler);
+        }
+
+        ~WaitingResolutionItem() 
+        {
+            delete _lock;
+            delete _sem;
+            delete _func_handler;
+            delete _alarm;
+        }
+
+        typedef typename Queue<WaitingResolutionItem>::Element Element;
+        typedef Queue<WaitingResolutionItem> ResolutionQueue;
+
+        Element * link() { return &_link; }
+    
+        /// @brief Semaphore to be waited until the net_address is resolved or the alarm is triggered
+        Semaphore * semaphore() { return _sem; }
+
+        /// @brief Boolean to check if the address was found
+        bool was_resolved() { return _resolved; }
+
+        /// @brief The Net Address that owns the MAC Address that we are looking 
+        const Net_Address & searched_address() const { return _searched_address; }
+        
+        /// @brief MAC Address being searched
+        const MAC_Address & response_address() const { return _response_address; }
+        
+        /// @brief Response the MAC Address  
+        /// @param response 
+        void resolve_address(MAC_Address & response)  
+        { 
+            _lock->lock();
+
+            if (_destroyed == true) 
+            {
+                return;
+            }
+
+            delete _alarm;
+
+            _resolved = true;
+    
+            _response_address = response;
+
+            _lock->unlock();
+
+            // Releases the waiting thread
+            _sem->v();
+        }
+
+    private:
+        static void handle_timeout(WaitingResolutionItem * item) 
+        {
+            item->_lock->lock();
+
+            // If the response arrive and accessed the Mutex before the TimeoutHandler
+            if (item->_resolved == true) 
+            {
+                return;
+            }
+
+            item->_destroyed = true;
+
+            item->_lock->unlock();
+
+            item->_sem->v();
+        }
+
+        Element _link;
+
+        Semaphore * _sem;
+        Timeout_Handler * _func_handler;
+        Alarm * _alarm;
+        Mutex * _lock;
+
+        bool _resolved;
+        bool _destroyed;
+        
+        Net_Address _searched_address;
+        MAC_Address _response_address;
+    };
+
+protected:
+    typedef WaitingResolutionItem::ResolutionQueue WaitingResolutionQueue;
 
 public:
 
@@ -114,8 +224,7 @@ private:
     typedef Ethernet::BufferInfo BufferInfo;
 
 public:
-    static ARP* init(IP* ip, SiFiveU_NIC * nic);
-    ~ARP();
+    static ARP* init(SiFiveU_NIC * nic, const Net_Address & address);
 
     /// @brief Returns the MAC_Address of a net_Address, may use the value from a ResolutionTable
     /// or send a ARP message by the NIC to restore it
@@ -127,7 +236,7 @@ public:
     MAC_Address mac_address() { return _mac_address; }
 
 protected:
-    ARP(IP* ip, SiFiveU_NIC * nic);
+    ARP(SiFiveU_NIC * nic, const Net_Address & address);
 
 // Receiving Methods
 private:
@@ -135,16 +244,20 @@ private:
     static void class_nic_callback(BufferInfo * bufferInfo);
     void nic_callback(BufferInfo * bufferInfo);
 
+    void send_request(Net_Address searched_address);
+    void respond_request(Message * request);
+    void handle_reply(Message * request);
+    
 private:
     static ARP * _arp;
     
-    IP * _ip;
     SiFiveU_NIC * _nic;
 
     MAC_Address _mac_address;
     Net_Address _net_address;
 
     ResolutionTable _resolutionTable;
+    WaitingResolutionQueue _resolutionQueue;
 };
 
 __END_SYS

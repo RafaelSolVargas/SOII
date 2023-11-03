@@ -5,6 +5,7 @@
 #include <buffers_handler.h>
 #include <machine/nic.h>
 #include <network/ethernet.h>
+#include <network/arp.h>
 #include <utility/list.h>
 #include <system.h>
 #include <utility/queue.h>
@@ -313,6 +314,7 @@ private:
 
     static IP * _ip;
     SiFiveU_NIC * _nic;
+    ARP * _arp;
 
     Statistics _stats;
 

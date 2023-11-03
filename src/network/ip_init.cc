@@ -16,11 +16,6 @@ IP* IP::init(NIC<Ethernet> * nic)
     {
         // Initialize the IP
         _ip = new (SYSTEM) IP(nic);
-
-        _ip->configure_sending_queue();
-
-        // Configure the callback to be called when the NIC receive frames
-        _ip->_nic->attach_callback(&class_nic_callback, PROTOCOL);
     }
 
     return _ip;
@@ -32,6 +27,14 @@ IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic))
 
     // Get the IP from the MAC Address
     _address = convert_mac_to_ip_address(_nic->address());
+
+    configure_sending_queue();
+
+    // Configure the callback to be called when the NIC receive frames
+    _nic->attach_callback(&class_nic_callback, PROTOCOL);
+
+    // Configure ARP connections
+    _arp = ARP::init(_nic, _address);
 }
 
 void IP::configure_sending_queue() 

@@ -4,23 +4,23 @@ __BEGIN_SYS
 
 ARP* ARP::_arp;
 
-ARP* ARP::init(IP* ip, SiFiveU_NIC * nic) 
+ARP* ARP::init(SiFiveU_NIC * nic, const Net_Address & address) 
 {
     if (!_arp) 
     {
         // Initialize the IP
-        _arp = new (SYSTEM) ARP(ip, nic);
+        _arp = new (SYSTEM) ARP(nic, address);
     }
 
     return _arp;
 }
 
-ARP::ARP(IP* ip, SiFiveU_NIC * nic) : _ip(ip), _nic(nic)
+ARP::ARP(SiFiveU_NIC * nic, const Net_Address & address) : _nic(nic)
 { 
     db<ARP>(TRC) << "Initializing ARP" << endl;
 
     _mac_address = _nic->address();
-    _net_address = _ip->address();
+    _net_address = address;
 
     // Configure the callback to be called when the NIC receive frames
     _nic->attach_callback(&class_nic_callback, PROTOCOL);
