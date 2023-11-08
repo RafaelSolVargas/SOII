@@ -146,6 +146,7 @@ class TSTPOE;
 class TSTP;
 class ARP;
 class IP;
+class Router;
 class ICMP;
 class UDP;
 class TCP;

@@ -347,6 +347,7 @@ public:
     Element * link() { return &_link; }
 
     Address interface_address() { return _interface_address; }
+    ARP * arp() { return _arp; }
 
 private:
     SiFiveU_NIC * _nic;
@@ -401,14 +402,9 @@ public:
     ~Router();
 
 private:
-    /// @brief Choose which will be the actual destination address to send the package in this loop, it can be the final destination
-    /// or can be a gateway, depending if the final destination will be in the same local network of the sender
-    /// will only execute ARP if the destination network is in the same 
-    /// @param dst The final destination, this value still being required to be placed in the IP Header
-    /// @return The actual address to be resolved by ARP, the return of ARP.resolve must be inserted in the Ethernet Header
-    Address define_actual_destination_address(const Address & dst_addr);
-
     Routing * get_routing_of_address(const Address & dst_addr);
+
+    RouterInterface* get_interface_to_same_subnet(const Address & dst_addr);
     
     void populate_paths_table(const MAC_Address & mac_addr);
 

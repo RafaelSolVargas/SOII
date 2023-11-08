@@ -51,31 +51,46 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
 
 Router::MAC_Address Router::route(const Address & dst_addr) 
 {
-    Address next_host_addr = define_actual_destination_address(dst_addr);
+    // Procura uma entrada na tabela que mapeie o resultado da máscara para um gateway
+    // Caso 150.162.60.4 => 150.162.60.0 = 150.162.60.2 => Própria Subnet
+    // Caso 150.162.1.0 => 150.162.1.0 = NULL => Default Gateway  
+    Routing * routing = get_routing_of_address(dst_addr);
 
-    return _arp->resolve(next_host_addr);
+    if (routing) 
+    {
+        // Para o caso de estar enviando pacote para 150.162.60.4, existe um auto route para a minha própria interface
+        // Caso o gateway destino seja o meu próprio address, executo o ARP do endereço destino
+        RouterInterface * own_gateway = get_interface_to_same_subnet(routing->gateway()); 
+        if (own_gateway)
+        {
+            return own_gateway->arp()->resolve(dst_addr);
+        }
+    }
+
+    // routing.gateway() = 150.162.60.1
+    routing = get_routing_of_address(Address("0.0.0.0"));
+
+    // Pega uma interface que leve para a mesma subnet que o default gateway
+    RouterInterface * default_interface = get_interface_to_same_subnet(routing->gateway());
+
+    // Retorna MAC do Gateway
+    return default_interface->arp()->resolve(routing->gateway());
 }
 
-Router::Address Router::define_actual_destination_address(const Address & dst) 
+RouterInterface* Router::get_interface_to_same_subnet(const Address & dst_addr) 
 {
-    // Check if the destiny address is in any sub network that we have an interface
+    // If dst_addr == 150.160.60.4 and interface_address = 150.160.60.1 it'll accept 
     for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
     {
         RouterInterface* interface = el->object();
 
-        Address address = interface->interface_address();
-
-        bool is_same_sub_network = (address[0] == dst[0] && address[1] == dst[1] && address[2] == dst[2]);
-
-        if (is_same_sub_network) 
+        if ((interface->interface_address() & Address("255.255.255.0")) == (dst_addr & Address("255.255.255.0"))) 
         {
-            return address;
+            return interface;
         }
     }
-    
-    // When called by the sender, will return 150.162.60.1, one interface of the gateway
-    // When called by the receiver, will return 150.162.1.1, one interface of the gateway
-    return get_routing_of_address(Address("0.0.0.0"))->gateway();   
+
+    return nullptr;
 }
 
 Routing* Router::get_routing_of_address(const Address & dst_addr) 
@@ -85,7 +100,7 @@ Routing* Router::get_routing_of_address(const Address & dst_addr)
     {
         Routing* routing = el->object();
 
-        if (routing->destiny() == dst_addr) 
+        if ((routing->destiny() & Address("255.255.255.0")) == (dst_addr & Address("255.255.255.0"))) 
         {
             return routing;
         }
@@ -152,12 +167,20 @@ Router::Address Router::convert_mac_to_ip_address(const MAC_Address & address)
 
 Router::~Router() 
 {
-    // Delete all paths
+    // Delete all interfaces
     for (RouterInterface::Element *el = _interfaces.head(); el; el = el->next()) 
     {
-        RouterInterface* path = el->object();
+        RouterInterface* obj = el->object();
 
-        delete path;
+        delete obj;
+    }
+
+    // Delete all routes
+    for (RoutingList::Element *el = _routings.head(); el; el = el->next()) 
+    {
+        Routing* obj = el->object();
+
+        delete obj;
     }
 }
 
