@@ -26,7 +26,7 @@ IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic))
     db<IP>(TRC) << "Initializing IP" << endl;
 
     // Get the IP from the MAC Address
-    _address = convert_mac_to_ip_address(_nic->address());
+    _address = Router::convert_mac_to_ip_address(_nic->address());
 
     db<IP>(TRC) << "MAC => " << _nic->address() << endl;
     db<IP>(TRC) << "IP => " << _address << endl;
@@ -38,6 +38,9 @@ IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic))
 
     // Configure ARP connections
     _arp = ARP::init(_nic, _address);
+
+    // Initialize the router
+    _router = new (SYSTEM) Router(_nic, _arp, _nic->address());
 }
 
 void IP::configure_sending_queue() 

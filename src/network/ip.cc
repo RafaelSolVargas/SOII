@@ -140,7 +140,7 @@ FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned i
     unsigned int required_size = data_size + sizeof(Header);
 
     // Get the MAC Address of the IP Address
-    MAC_Address dst_mac = _arp->resolve(dst);
+    MAC_Address dst_mac =  _router->route(dst);
 
     // Preallocate an buffer to use it for sending the package 
     NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(dst_mac, PROTOCOL, required_size);
@@ -155,7 +155,6 @@ int IP::class_sending_queue_function()
 {
     return _ip->sending_queue_function();
 }
-
 
 int IP::sending_queue_function() 
 {
@@ -194,31 +193,6 @@ unsigned int IP::get_next_id()
     // TODO -> Protect with mutex
 
     return _ip->_stats.next_id++;
-}
-
-IP::MAC_Address IP::convert_ip_to_mac_address(const Address & address) 
-{
-    // :8 -> .2
-    // :9 -> .1
-    if (address == Address("192.168.0.1")) 
-    {
-        return MAC_Address("86:52:18:0:84:9");
-    } 
-    else 
-    {
-        return MAC_Address("86:52:18:0:84:8");
-    } 
-}
-
-IP::Address IP::convert_mac_to_ip_address(const MAC_Address & address) 
-{
-    if (address == MAC_Address("86:52:18:0:84:9")) 
-    {
-        return Address("192.168.0.1");
-    } 
-    else {
-        return Address("192.168.0.2");
-    }
 }
 
 __END_SYS

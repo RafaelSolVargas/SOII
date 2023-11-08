@@ -227,6 +227,8 @@ public:
     static const Address broadcast() { return Address::BROADCAST; }
 };
 
+class Router;
+
 class IP : public IPDefinitions
 {
 private:
@@ -308,8 +310,6 @@ private:
     void configure_sending_queue();
 
 private:
-    MAC_Address convert_ip_to_mac_address(const Address & address);
-    Address convert_mac_to_ip_address(const MAC_Address & address);
     Address _address;
 
     static IP * _ip;
@@ -317,6 +317,8 @@ private:
     ARP * _arp;
 
     Statistics _stats;
+
+    Router * _router;
 
     BuffersHandler<char> nw_buffers;
 
@@ -329,6 +331,91 @@ private:
     Semaphore * _semaphore;
     /// @brief Boolean to determine when the Thread should stop
     bool _deleted;
+};
+
+/// @brief An interface with the Internet, Gateways generally contains multiples interfaces, PCs may contains bluethooth, wi-fi and ethernet interfaces
+class RouterInterface 
+{
+public:
+    typedef IP::Address Address;
+    typedef Simple_List<RouterInterface> InterfacesList;
+    typedef InterfacesList::Element Element;
+
+    RouterInterface(SiFiveU_NIC * nic, ARP * arp, const Address & interface_address) : _nic(nic), _arp(arp), 
+        _interface_address(interface_address), _link(this) { }
+
+    Element * link() { return &_link; }
+
+    Address interface_address() { return _interface_address; }
+
+private:
+    SiFiveU_NIC * _nic;
+    ARP * _arp;
+    Address _interface_address;
+
+    Element _link;
+};
+
+class Routing 
+{
+public:
+    typedef IP::Address Address;
+    typedef Simple_List<Routing> RoutingList;
+    typedef RoutingList::Element Element;
+
+    Routing(const Address & destiny, const Address & gateway) : _destiny(destiny), _gateway(gateway), _link(this) { }
+
+    Element * link() { return &_link; }
+
+    Address destiny() { return _destiny; }
+    Address gateway() { return _gateway; }
+
+private:
+    Address _destiny;
+    Address _gateway;
+
+    Element _link;
+};
+
+class Router 
+{
+private:
+    typedef Ethernet::Address MAC_Address;
+    typedef IP::Address Address;
+    typedef RouterInterface::InterfacesList InterfacesList;
+    typedef Routing::RoutingList RoutingList;
+
+public:
+
+    Router(SiFiveU_NIC * nic, ARP * arp, const MAC_Address & mac_addr) : _nic(nic), _arp(arp) 
+    {
+        populate_paths_table(mac_addr);
+    }
+
+    MAC_Address route(const Address & dst_addr);
+
+    static MAC_Address convert_ip_to_mac_address(const Address & address);
+    
+    static Address convert_mac_to_ip_address(const MAC_Address & address);
+
+    ~Router();
+
+private:
+    /// @brief Choose which will be the actual destination address to send the package in this loop, it can be the final destination
+    /// or can be a gateway, depending if the final destination will be in the same local network of the sender
+    /// will only execute ARP if the destination network is in the same 
+    /// @param dst The final destination, this value still being required to be placed in the IP Header
+    /// @return The actual address to be resolved by ARP, the return of ARP.resolve must be inserted in the Ethernet Header
+    Address define_actual_destination_address(const Address & dst_addr);
+
+    Routing * get_routing_of_address(const Address & dst_addr);
+    
+    void populate_paths_table(const MAC_Address & mac_addr);
+
+    InterfacesList _interfaces;
+    RoutingList _routings;
+    SiFiveU_NIC * _nic;
+    ARP * _arp;
 };
 
 __END_SYS
