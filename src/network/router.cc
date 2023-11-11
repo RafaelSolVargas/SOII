@@ -8,49 +8,61 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
     if (mac_addr == MAC_Address("86:52:18:0:84:9")) 
     {
         // Creates interface with Network One
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.2")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.2"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("150.162.60.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.60.1")))->link());
 
         // Auto Route
-        _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("150.162.60.2")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("255.255.255.0"), Address("150.162.60.2")))->link());
+
+        _is_gateway = false;
     }
     // Receiver
     else if (mac_addr == MAC_Address("86:52:18:0:84:8")) 
     {
         // Creates interface with Network Two
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.50")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.50"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("150.162.1.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.1.1")))->link());
 
         // Auto Route
-        _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("150.162.1.50")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("255.255.255.0"), Address("150.162.1.50")))->link());
+
+        _is_gateway = true;
     } 
     // Gateway
     else if (mac_addr == MAC_Address("86:52:18:0:84:7")) 
     {
         // Interface with Network One
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.1")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.1"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Interface with Network Two
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.60")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.60"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("150.162.1.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.1.1")))->link());
 
         // Auto Route Network One
-        _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("150.162.60.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("255.255.255.0"), Address("150.162.60.1")))->link());
 
         // Auto Route Network Two
-        _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("150.162.1.60")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("255.255.255.0"), Address("150.162.1.60")))->link());
+    
+        _is_gateway = false;
     }
 }
 
 
 Router::MAC_Address Router::route(const Address & dst_addr) 
 {
+    // O algoritmo é:
+    // Aplico a máscara da classe, se não for manda para o default
+    // Lookup na tabela de roteamento aplicando a máscara de cada um, vai me entregar um gateway
+    // Se esse gateway ser eu mesmo, logo eu estou diretamente conectado e portanto chamo ARP.resolve para o endereço destino
+    // Se o gateway for outra máquina, faço o resolve dessa máquina e mando para ele
+    
     // Procura uma entrada na tabela que mapeie o resultado da máscara para um gateway
     // Caso 150.162.60.4 => 150.162.60.0 = 150.162.60.2 => Própria Subnet
     // Caso 150.162.1.0 => 150.162.1.0 = NULL => Default Gateway  
@@ -58,40 +70,35 @@ Router::MAC_Address Router::route(const Address & dst_addr)
 
     if (routing) 
     {
-        // Para o caso de estar enviando pacote para 150.162.60.4, existe um auto route para a minha própria interface
-        // Caso o gateway destino seja o meu próprio address, executo o ARP do endereço destino
-        RouterInterface * own_gateway = get_interface_to_same_subnet(routing->gateway()); 
-        if (own_gateway)
+        // Check if the gateway is in my own subnet, resolve directly with ARP
+        for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
         {
-            return own_gateway->arp()->resolve(dst_addr);
+            RouterInterface* interface = el->object();
+
+            if (interface->interface_address() == (routing->gateway())) 
+            {
+                return interface->arp()->resolve(dst_addr);
+            }
         }
     }
 
     // routing.gateway() = 150.162.60.1
     routing = get_routing_of_address(Address("0.0.0.0"));
 
-    // Pega uma interface que leve para a mesma subnet que o default gateway
-    RouterInterface * default_interface = get_interface_to_same_subnet(routing->gateway());
-
-    // Retorna MAC do Gateway
-    return default_interface->arp()->resolve(routing->gateway());
-}
-
-RouterInterface* Router::get_interface_to_same_subnet(const Address & dst_addr) 
-{
-    // If dst_addr == 150.160.60.4 and interface_address = 150.160.60.1 it'll accept 
+    // Pega uma interface que leve para a mesma subnet que o gateway encontrado
     for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
     {
         RouterInterface* interface = el->object();
 
-        if ((interface->interface_address() & Address("255.255.255.0")) == (dst_addr & Address("255.255.255.0"))) 
+        if ((interface->interface_address()) == (dst_addr & interface->subnet_mask())) 
         {
-            return interface;
+            return interface->arp()->resolve(routing->gateway());
         }
     }
 
-    return nullptr;
+    return Address::NULL;
 }
+
 
 Routing* Router::get_routing_of_address(const Address & dst_addr) 
 {
@@ -100,7 +107,7 @@ Routing* Router::get_routing_of_address(const Address & dst_addr)
     {
         Routing* routing = el->object();
 
-        if ((routing->destiny() & Address("255.255.255.0")) == (dst_addr & Address("255.255.255.0"))) 
+        if (routing->destiny() == (dst_addr & routing->mask())) 
         {
             return routing;
         }

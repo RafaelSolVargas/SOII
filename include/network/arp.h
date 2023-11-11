@@ -284,6 +284,7 @@ public:
     /// @param net_address 
     /// @return The MAC_Address of the destination net_address
     MAC_Address resolve(const Net_Address & searched_address);
+    bool is_gateway() { return _is_gateway; };
 
     Net_Address net_address() { return _net_address; }
     MAC_Address mac_address() { return _mac_address; }
@@ -311,6 +312,7 @@ private:
 
     ResolutionTable _resolutionTable;
     WaitingResolutionQueue _resolutionQueue;
+    bool _is_gateway;
 };
 
 __END_SYS

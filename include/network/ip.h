@@ -157,6 +157,10 @@ public:
             }
         }
 
+        /// @brief The destiny of this Datagram 
+        /// @return Address 32 bit
+        Address destiny() { return _dst; }
+
         /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
         /// a lot of caution to handle this pointer in a contiguous way. 
         void * data_address() { return reinterpret_cast<char *>(this) + sizeof(*this);  }
@@ -341,18 +345,22 @@ public:
     typedef Simple_List<RouterInterface> InterfacesList;
     typedef InterfacesList::Element Element;
 
-    RouterInterface(SiFiveU_NIC * nic, ARP * arp, const Address & interface_address) : _nic(nic), _arp(arp), 
-        _interface_address(interface_address), _link(this) { }
+    RouterInterface(SiFiveU_NIC * nic, ARP * arp, const Address & interface_address, const Address & subnet_mask, const Address & class_mask) : 
+        _nic(nic), _arp(arp), _interface_address(interface_address), _subnet_mask(subnet_mask), _class_mask(class_mask), _link(this) { }
 
     Element * link() { return &_link; }
 
     Address interface_address() { return _interface_address; }
+    Address subnet_mask() { return _subnet_mask; }
+    Address class_mask() { return _class_mask; }
     ARP * arp() { return _arp; }
 
 private:
     SiFiveU_NIC * _nic;
     ARP * _arp;
     Address _interface_address;
+    Address _subnet_mask;
+    Address _class_mask;
 
     Element _link;
 };
@@ -364,15 +372,18 @@ public:
     typedef Simple_List<Routing> RoutingList;
     typedef RoutingList::Element Element;
 
-    Routing(const Address & destiny, const Address & gateway) : _destiny(destiny), _gateway(gateway), _link(this) { }
+    Routing(const Address & destiny, const Address & mask, const Address & gateway) : 
+        _destiny(destiny), _mask(mask), _gateway(gateway), _link(this) { }
 
     Element * link() { return &_link; }
 
     Address destiny() { return _destiny; }
     Address gateway() { return _gateway; }
+    Address mask() { return _mask; }
 
 private:
     Address _destiny;
+    Address _mask;
     Address _gateway;
 
     Element _link;
@@ -395,6 +406,8 @@ public:
 
     MAC_Address route(const Address & dst_addr);
 
+    bool is_gateway() { return _is_gateway; }
+
     static MAC_Address convert_ip_to_mac_address(const Address & address);
     
     static Address convert_mac_to_ip_address(const MAC_Address & address);
@@ -412,6 +425,8 @@ private:
     RoutingList _routings;
     SiFiveU_NIC * _nic;
     ARP * _arp;
+
+    bool _is_gateway;
 };
 
 __END_SYS

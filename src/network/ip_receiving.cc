@@ -40,7 +40,11 @@ void IP::handle_datagram(Header * datagram)
         db<IP>(TRC) << receivedData[index];
     }
 
-    _stats.rx_datagrams++;
+    // Quando uma instância IP estiver rodando em uma máquina que não é gateway, deve descartar datagramas IP que são para outro destino
+    if (_arp->is_gateway() || datagram->destiny() != _address) 
+    {
+        _stats.rx_datagrams++;
+    }
 }
 
 void IP::handle_fragmentation(Header * fragment) 
