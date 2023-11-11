@@ -50,19 +50,19 @@ protected:
 
         ~WaitingResolutionItem() 
         {
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Lock" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Lock" << endl;
             delete _lock;
             
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Semaphore" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Semaphore" << endl;
             delete _sem;
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Handler" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Handler" << endl;
             delete _func_handler;
 
             // If resolved then the resolve had already deleted the alarm
             if (!_resolved) 
             {
-                db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Alarm" << endl;
+                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Alarm" << endl;
                 delete _alarm;
             }
         }
@@ -88,16 +88,16 @@ protected:
         /// @param response 
         void resolve_address(const MAC_Address & response)  
         { 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locking " << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locking " << endl;
 
             _lock->p();
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locked " << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locked " << endl;
 
             // In this case the alarm was already triggered
             if (_destroyed == true) 
             {
-                db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking and Returning" << endl;
+                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking and Returning" << endl;
 
                 _lock->v();
 
@@ -111,11 +111,11 @@ protected:
     
             _response_address = response;
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking" << endl;
 
             _lock->v();
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::ReleasingSemaphore" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::ReleasingSemaphore" << endl;
 
             // Releases the waiting thread
             _sem->v();
@@ -139,18 +139,18 @@ protected:
     private:
         static void handle_timeout(WaitingResolutionItem * item) 
         {
-            db<ARP>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::TimeoutReached" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::TimeoutReached" << endl;
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locking" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locking" << endl;
             
             item->_lock->p();
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locked" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locked" << endl;
 
             // If the response arrive and accessed the Mutex before the TimeoutHandler
             if (item->_resolved == true) 
             {
-                db<ARP>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Unlocking And Returning" << endl;
+                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Unlocking And Returning" << endl;
             
                 item->_lock->v();
 
@@ -161,7 +161,7 @@ protected:
 
             item->_lock->v();
 
-            db<ARP>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::ReleasingSemaphore" << endl;
+            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::ReleasingSemaphore" << endl;
 
             item->_sem->v();
         }

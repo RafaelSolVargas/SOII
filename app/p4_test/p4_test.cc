@@ -77,11 +77,11 @@ void ip_test_fragmentation() {
     
     char data[DATA_SIZE];
 
-    IP::Address destination_ip = IP::Address("192.168.0.2");
+    IP::Address destination_ip = IP::Address("150.162.1.50");
     
     // Sender IP = 192.168.0.1
     // Receiver IP = 192.168.0.2 
-    if ((ip->nic()->address()[5] == 8)) 
+    if ((ip->nic()->address()[5] == 9)) 
     { 
         cout << " I'm the sender " << endl;
 
@@ -116,7 +116,7 @@ void ip_test_fragmentation() {
             Delay(100000);
         }
     }
-    else if ((ip->nic()->address()[5] == 9))
+    else if ((ip->nic()->address()[5] == 8))
     { 
         cout << "I'm the receiver" << endl;
 

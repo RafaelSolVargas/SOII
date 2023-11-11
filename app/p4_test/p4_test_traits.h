@@ -129,6 +129,17 @@ template<> struct Traits<NicBuffers>: public Traits<Build>
 };
 
 
+template<> struct Traits<WaitingResolutionItem>: public Traits<Build>
+{
+    static const bool debugged = false;
+
+    static const bool error   = false;
+    static const bool warning = false;
+    static const bool info    = false;
+    static const bool trace   = false;
+};
+
+
 template<> struct Traits<Thread>: public Traits<Build>
 {
     static const bool enabled = Traits<System>::multithread;

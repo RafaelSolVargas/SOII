@@ -70,10 +70,10 @@ Router::MAC_Address Router::route(const Address & dst_addr)
     // Caso 150.162.1.0 => 150.162.1.0 = NULL => Default Gateway  
     Routing * routing = get_routing_of_address(dst_addr);
 
-    db<Router>(TRC) << "A" << endl;
-
     if (routing) 
     {
+        db<Router>(TRC) << "Routing returned from table => {dst=" << routing->destiny() << ",gateway=" << routing->gateway() << "}" << endl;
+
         // Check if the gateway is in my own subnet, resolve directly with ARP
         for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
         {
@@ -81,26 +81,30 @@ Router::MAC_Address Router::route(const Address & dst_addr)
 
             if (interface->interface_address() == (routing->gateway())) 
             {
-                return interface->arp()->resolve(dst_addr);
+                MAC_Address resolved_address = interface->arp()->resolve(dst_addr); 
+                
+                db<Router>(TRC) << "Router::Route(" << dst_addr << ") => to myself with MAC=" << resolved_address << endl;
+
+                return resolved_address;
             }
         }
     }
 
-    db<Router>(TRC) << "B" << endl;
-
     // routing.gateway() = 150.162.60.1
     routing = get_routing_of_address(Address("0.0.0.0"));
-
-    db<Router>(TRC) << "C" << endl;
 
     // Pega uma interface que leve para a mesma subnet que o gateway encontrado
     for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
     {
         RouterInterface* interface = el->object();
 
-        if ((interface->interface_address()) == (dst_addr & interface->subnet_mask())) 
+        if ((interface->interface_address() & interface->subnet_mask()) == (routing->gateway() & interface->subnet_mask())) 
         {
-            return interface->arp()->resolve(routing->gateway());
+            MAC_Address resolved_address = interface->arp()->resolve(routing->gateway());
+
+            db<Router>(TRC) << "Router::Route(" << dst_addr << ") => (" << routing->gateway() << ") with MAC=" << resolved_address << endl;
+
+            return resolved_address;
         }
     }
 

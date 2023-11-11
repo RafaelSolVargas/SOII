@@ -145,6 +145,7 @@ class ELP;
 class TSTPOE;
 class TSTP;
 class ARP;
+class WaitingResolutionItem;
 class IP;
 class Router;
 class ICMP;

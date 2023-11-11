@@ -355,6 +355,15 @@ public:
     Address class_mask() { return _class_mask; }
     ARP * arp() { return _arp; }
 
+    friend Debug & operator<<(Debug & db, const RouterInterface & h) {
+        db << "{address=" << h._interface_address
+        << ",subnet_mask=" << h._subnet_mask
+        << ",class_mask=" << h._class_mask
+        << "}";
+
+        return db;
+    }
+
 private:
     SiFiveU_NIC * _nic;
     ARP * _arp;
@@ -380,6 +389,15 @@ public:
     Address destiny() { return _destiny; }
     Address gateway() { return _gateway; }
     Address mask() { return _mask; }
+
+    friend Debug & operator<<(Debug & db, const Routing & h) {
+        db << "{destiny=" << h._destiny
+        << ",gateway=" << h._gateway
+        << ",mask=" << h._mask
+        << "}";
+
+        return db;
+    }
 
 private:
     Address _destiny;
