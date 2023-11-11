@@ -57,6 +57,8 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
 
 Router::MAC_Address Router::route(const Address & dst_addr) 
 {
+    db<Router>(TRC) << "Router::route(" << dst_addr << ")" << endl;
+    
     // O algoritmo é:
     // Aplico a máscara da classe, se não for manda para o default
     // Lookup na tabela de roteamento aplicando a máscara de cada um, vai me entregar um gateway
@@ -67,6 +69,8 @@ Router::MAC_Address Router::route(const Address & dst_addr)
     // Caso 150.162.60.4 => 150.162.60.0 = 150.162.60.2 => Própria Subnet
     // Caso 150.162.1.0 => 150.162.1.0 = NULL => Default Gateway  
     Routing * routing = get_routing_of_address(dst_addr);
+
+    db<Router>(TRC) << "A" << endl;
 
     if (routing) 
     {
@@ -82,8 +86,12 @@ Router::MAC_Address Router::route(const Address & dst_addr)
         }
     }
 
+    db<Router>(TRC) << "B" << endl;
+
     // routing.gateway() = 150.162.60.1
     routing = get_routing_of_address(Address("0.0.0.0"));
+
+    db<Router>(TRC) << "C" << endl;
 
     // Pega uma interface que leve para a mesma subnet que o gateway encontrado
     for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
@@ -96,7 +104,9 @@ Router::MAC_Address Router::route(const Address & dst_addr)
         }
     }
 
-    return Address::NULL;
+    db<Router>(TRC) << "Failed to route, returning NULL" << endl;
+
+    return MAC_Address::NULL;
 }
 
 

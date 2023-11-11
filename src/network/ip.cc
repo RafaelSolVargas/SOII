@@ -119,12 +119,6 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 
         nw_buffers.copy_nc(map, header->data_address(), fragment_size);
 
-        //char data_to_print[fragment_size];
-
-        //memcpy(data_to_print, header->data_address(), fragment_size);
-
-        //db<IP>(TRC) << "IP::Fragment[" << offset << "]" << " >> " << data_to_print << endl;
-
         _nic->send(buffer);
 
         // Update data for next loop
@@ -140,7 +134,7 @@ FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned i
     unsigned int required_size = data_size + sizeof(Header);
 
     // Get the MAC Address of the IP Address
-    MAC_Address dst_mac =  _router->route(dst);
+    MAC_Address dst_mac = _router->route(dst);
 
     // Preallocate an buffer to use it for sending the package 
     NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(dst_mac, PROTOCOL, required_size);

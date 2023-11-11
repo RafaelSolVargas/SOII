@@ -78,15 +78,14 @@ void ip_test_fragmentation() {
     char data[DATA_SIZE];
 
     IP::Address destination_ip = IP::Address("192.168.0.2");
-    bool is_sender = (ip->address()[3] % 2);
-
+    
     // Sender IP = 192.168.0.1
     // Receiver IP = 192.168.0.2 
-    if (is_sender) 
+    if ((ip->nic()->address()[5] == 8)) 
     { 
         cout << " I'm the sender " << endl;
 
-        Delay(100000);
+        Delay(4000000);
 
         memset(data, '0' + 5, DATA_SIZE);
         
@@ -117,7 +116,7 @@ void ip_test_fragmentation() {
             Delay(100000);
         }
     }
-    else
+    else if ((ip->nic()->address()[5] == 9))
     { 
         cout << "I'm the receiver" << endl;
 
@@ -129,6 +128,17 @@ void ip_test_fragmentation() {
             Delay(100000);
         }
     }  
+    else if ((ip->nic()->address()[5] == 7)) {
+        cout << "I'm the gateway" << endl;
+
+        unsigned int initial_packages = ip->statistics().rx_datagrams; 
+
+        cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
+
+        while (ip->statistics().rx_datagrams < 1 + initial_packages) {
+            Delay(100000);
+        }
+    }
 }
 
 int main()

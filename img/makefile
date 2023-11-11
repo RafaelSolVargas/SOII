@@ -9,9 +9,17 @@ IMAGES		:= $(subst .img,,$(shell find . -name \*.img -printf "%f\n")) \
 IMAGE		:= $(addsuffix $(MACH_IMGSUFF),$(APPLICATION))
 .PRECIOUS: $(APPLICATION).img
 OUTPUT		:= $(addsuffix .out,$(APPLICATION))
+
+# Peer
 PEER		:= p-$(APPLICATION)
 PEER_IMAGE	:= p-$(IMAGE)
 PEER_OUTPUT	:= p-$(OUTPUT)
+
+# Gateway
+GATEWAY		:= g-$(APPLICATION)
+GATEWAY_IMAGE	:= g-$(IMAGE)
+GATEWAY_OUTPUT	:= g-$(OUTPUT)
+
 
 ifeq ($(MMOD),emote3)
 FLASH		:= $(addsuffix .hex,$(APPLICATION))
@@ -35,18 +43,25 @@ DEBUGGER	:= $(DEBUGGER) -ex "add-symbol-file $(call DBSEC,$(SRC)/system/system_$
 endif
 DEBUGGER	:= $(DEBUGGER) -ex "add-symbol-file $(call DBSEC,$(APP)/$(APPLICATION)/$(APPLICATION),.text)"
 PEER_DEBUGGER	:= $(subst 1235,1236,$(DEBUGGER))
+GATEWAY_DEBUGGER := $(subst 1235,1237,$(DEBUGGER))
 endif
 
 PEER_EMULATOR	:= $(subst 1235,1236,$(EMULATOR))
+GATEWAY_EMULATOR := $(subst 1235,1237,$(EMULATOR))
 
 NETWORK	        := -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(APPLICATION).pcap -device pcnet,id=eth0,netdev=vlan0,mac=56:34:12:00:54:08 -device pcnet,id=eth1,mac=00:00:00:00:00:01
 # add the rest of the line to enable a dhcp server -netdev user,id=1,ipv6=off,restrict=on,net=10.0.1.0/24,host=10.0.1.1,dhcpstart=10.0.1.8
 PEER_NETWORK	:= -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(PEER).pcap -device pcnet,id=eth0,netdev=vlan0,mac=56:34:12:00:54:09 -device pcnet,id=eth1,mac=00:00:00:00:00:02
 
+GATEWAY_NETWORK 	:= -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(GATEWAY).pcap -device pcnet,id=eth0,netdev=vlan0,mac=56:34:12:00:54:07
+
+
+
 ifeq ($(MMOD),sifive_u)
 NETWORK	        := -D $(addsuffix 1.log,$(APPLICATION)) -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(APPLICATION).pcap -net nic,model=cadence_gem,id=eth0,netdev=vlan0,macaddr=56:34:12:00:54:08 #-net nic,model=cadence_gem,id=eth1,macaddr=00:00:00:00:00:01
 # add the rest of the line to enable a dhcp server -netdev user,id=1,ipv6=off,restrict=on,net=10.0.1.0/24,host=10.0.1.1,dhcpstart=10.0.1.8
 PEER_NETWORK	:= -D $(addsuffix 2.log,$(APPLICATION)) -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(PEER).pcap -net nic,model=cadence_gem,id=eth0,netdev=vlan0,macaddr=56:34:12:00:54:09 #-net nic,model=cadence_gem,id=eth1,macaddr=00:00:00:00:00:02
+GATEWAY_NETWORK	:= -D $(addsuffix 3.log,$(APPLICATION)) -netdev socket,id=vlan0,mcast=230.0.0.1:1234 -object filter-dump,id=dump0,netdev=vlan0,file=$(GATEWAY).pcap -net nic,model=cadence_gem,id=eth0,netdev=vlan0,macaddr=56:34:12:00:54:07 #-net nic,model=cadence_gem,id=eth1,macaddr=00:00:00:00:00:02
 endif
 
 ifeq ($(NODES),1)
@@ -55,13 +70,17 @@ all:		strip $(IMAGE)
 
 else
 
-all:		strip $(IMAGE) $(PEER_IMAGE)
+all:		strip $(IMAGE) $(PEER_IMAGE) $(GATEWAY_IMAGE)
 
 $(IMAGE):	$(APPLICATION)
 		$(MKBI) -x 0 -y 0 -z 0 $@ $<
 
 $(PEER_IMAGE):	$(APPLICATION)
 		$(MKBI) -x 10 -y 10 -z 0 $@ $<
+
+$(GATEWAY_IMAGE):	$(APPLICATION)
+		$(MKBI) -x 15 -y 15 -z 0 $@ $<
+
 
 endif
 
@@ -86,6 +105,10 @@ else
 		$(TERM) "timeout --foreground --kill-after=2s --signal=9 $(STIME)s $(EMULATOR)$(PEER_IMAGE) $(PEER_NETWORK) | $(TEE) $(PEER_OUTPUT) \
 		&& $(TCPDUMP) $(PEER).pcap > $(PEER).net \
 		&& read -p 'Press [Enter] key to close ...'" &
+		sleep 2
+		$(TERM) "timeout --foreground --kill-after=2s --signal=9 $(STIME)s $(EMULATOR)$(GATEWAY_IMAGE) $(GATEWAY_NETWORK) | $(TEE) $(GATEWAY_OUTPUT) \
+		&& $(TCPDUMP) $(GATEWAY).pcap > $(GATEWAY).net \
+		&& read -p 'Press [Enter] key to close ...'" &
 endif
 else
 		echo "Test must be run on real hardware platform!" > $(OUTPUT)
@@ -105,6 +128,11 @@ else
 		&& $(TCPDUMP) $(PEER).pcap > $(PEER).net \
 		&& read -p 'Press [Enter] key to close ...'" &
 		$(PEER_DEBUGGER) &
+		sleep 2
+		$(TERM) "$(GATEWAY_EMULATOR)$(GATEWAY_IMAGE) $(GATEWAY_NETWORK) | $(TEE) $(GATEWAY_OUTPUT) \
+		&& $(TCPDUMP) $(GATEWAY).pcap > $(GATEWAY).net \
+		&& read -p 'Press [Enter] key to close ...'" &
+		$(GATEWAY_DEBUGGER) &
 endif
 
 runall:		FORCE
