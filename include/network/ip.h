@@ -157,9 +157,8 @@ public:
             }
         }
 
-        /// @brief The destiny of this Datagram 
-        /// @return Address 32 bit
         Address destiny() { return _dst; }
+        Protocol protocol() { return _protocol; }
 
         /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
         /// a lot of caution to handle this pointer in a contiguous way. 
@@ -180,7 +179,7 @@ public:
         /// @brief Total size of this object in the memory
         unsigned int object_size() const 
         { 
-            return _length;
+            return length();
         }
 
         unsigned short flags() const { return _flags; }
@@ -191,8 +190,7 @@ public:
             db << "{ihl=" << h._ihl
             << ",ver=" << h._version
             << ",tos=" << h._service_type
-            << ",len=" << h._length
-            << ",lenHeader=" << h.length()
+            << ",len=" << h.length()
             << ",id="  << h.id()
             << ",flg=" << h.flags()
             << ",off=" << h.offset()
@@ -266,6 +264,8 @@ public:
     void send_buffered_data(SendingParameters parameters, void * buffer_ptr);
 
     SiFiveU_NIC * nic() { return _nic; }
+
+    Router * router() { return _router; }
 
     Address address() { return _address; }
 
@@ -443,7 +443,6 @@ private:
     RoutingList _routings;
     SiFiveU_NIC * _nic;
     ARP * _arp;
-
     bool _is_gateway;
 };
 

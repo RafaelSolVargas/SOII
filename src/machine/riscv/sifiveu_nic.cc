@@ -234,10 +234,11 @@ void SiFiveU_NIC::receive()
     // Só faz Lock se ele ler que tem algum pacote
     if (_rx_ring[_rx_cur].is_owner() && _rx_buffers[_rx_cur]->lock()) 
     {
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Current RX => " <<  _rx_cur << endl;
         unsigned int i = _rx_cur;
 
         ++_rx_cur %= RX_BUFS;
-        
+
         _rx_buffers_lock->v();
 
         Rx_Desc * descriptor = &_rx_ring[i];
@@ -277,7 +278,11 @@ void SiFiveU_NIC::receive()
         db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << i << "] => Releasing CallbackThread" << endl;
 
         _semaphore->v();
+
+        return;
     }
+
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Releasing without doing nothing " << endl;
 }
 
 bool SiFiveU_NIC::free(BufferInfo * buffer_info) 
@@ -333,7 +338,7 @@ void SiFiveU_NIC::handle_interruption()
 
         buffer->unlock();
 
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC transmit completed in desc[" << i << "] => " << *descriptor << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC transmit completed in TX[" << i << "] => " << *descriptor << endl;
 
         // Write 1 to signal that the transmit was finished in the Interrupt Register
         if (interruptionReg & R_INT_STATUS_B_TX_COMPLETE) 
@@ -351,7 +356,6 @@ void SiFiveU_NIC::handle_interruption()
     // One or more frames was received and stored in our buffers
     if (interruptionReg & R_INT_STATUS_B_RX_COMPLETE) 
     {
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler() CallingReceive()" << endl;
         receive();
 
         // Write 1 to these bits to set that the receive was finished

@@ -14,6 +14,8 @@ void ARP::nic_callback(BufferInfo * bufferInfo)
 
     if (message->src_mac_addr() == _mac_address) 
     {
+        db<ARP>(TRC) << "ARP::DroppingMessage(m=" << *message << ")" << endl;
+
         return;
     }
 
@@ -56,26 +58,18 @@ ARP::MAC_Address ARP::resolve(const Net_Address & searched_address)
         // Request for an answer
         send_request(searched_address);
 
-        db<ARP>(TRC) << "ARP::Waiting In Semaphore" << endl;
-
         // Wait in semaphore
         waitingItem->semaphore()->p();
-
-        db<ARP>(TRC) << "ARP::Released from Semaphore" << endl;
 
         // If not resolved the timeout has being reached, try again
         if (!waitingItem->was_resolved()) 
         {
-            db<ARP>(TRC) << "ARP::NotResolved_DeletingAndContinuing" << endl;
-
             _resolutionQueue.remove(waitingItem->link());
 
             delete waitingItem;
 
             continue;
         }
-
-        db<ARP>(TRC) << "ARP::AddressResolved " << endl;
 
         MAC_Address response_address = waitingItem->response_address();
         
@@ -113,13 +107,15 @@ void ARP::respond_request(Message * request)
     // If i'm the destiny address, respond with my MAC Address
     if (request->dst_net_addr() == _net_address) 
     {
-        db<ARP>(TRC) << "ARP::Answering Request with " << _mac_address << endl;
-
         NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(request->src_mac_addr(), PROTOCOL, sizeof(Message));
 
         // Create an reply inside the buffer
         new (buffer->data()) Message(REPLY, _mac_address, _net_address, request->src_mac_addr(), request->src_net_addr());
-        
+
+        Message message = Message(REPLY, _mac_address, _net_address, request->src_mac_addr(), request->src_net_addr());
+
+        db<ARP>(TRC) << "ARP::Answering Request with " << _mac_address << "::Message => " << message << endl;
+
         _nic->send(buffer);
     } 
     else 

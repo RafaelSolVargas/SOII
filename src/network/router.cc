@@ -7,11 +7,13 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
     // Sender
     if (mac_addr == MAC_Address("86:52:18:0:84:9")) 
     {
+        db<ARP>(TRC) << "ARP::PopulatingTable::Sender" << endl;
+
         // Creates interface with Network One
         _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.2"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.60.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.60.1")))->link());
 
         // Auto Route
         _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("255.255.255.0"), Address("150.162.60.2")))->link());
@@ -21,20 +23,24 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
     // Receiver
     else if (mac_addr == MAC_Address("86:52:18:0:84:8")) 
     {
+        db<ARP>(TRC) << "ARP::PopulatingTable::Receiver" << endl;
+
         // Creates interface with Network Two
         _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.50"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.1.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.1.1")))->link());
 
         // Auto Route
         _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("255.255.255.0"), Address("150.162.1.50")))->link());
 
-        _is_gateway = true;
+        _is_gateway = false;
     } 
     // Gateway
     else if (mac_addr == MAC_Address("86:52:18:0:84:7")) 
     {
+        db<ARP>(TRC) << "ARP::PopulatingTable::Gateway" << endl;
+
         // Interface with Network One
         _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.1"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
@@ -42,7 +48,7 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
         _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.60"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default route
-        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("0.0.0.0"), Address("150.162.1.1")))->link());
+        _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.1.1")))->link());
 
         // Auto Route Network One
         _routings.insert((new (SYSTEM) Routing(Address("150.162.60.0"), Address("255.255.255.0"), Address("150.162.60.1")))->link());
@@ -50,7 +56,7 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
         // Auto Route Network Two
         _routings.insert((new (SYSTEM) Routing(Address("150.162.1.0"), Address("255.255.255.0"), Address("150.162.1.60")))->link());
     
-        _is_gateway = false;
+        _is_gateway = true;
     }
 }
 
@@ -72,7 +78,7 @@ Router::MAC_Address Router::route(const Address & dst_addr)
 
     if (routing) 
     {
-        db<Router>(TRC) << "Routing returned from table => {dst=" << routing->destiny() << ",gateway=" << routing->gateway() << "}" << endl;
+        db<Router>(TRC) << "IP::Router Returned from table => {dst=" << routing->destiny() << ",gateway=" << routing->gateway() << "}" << endl;
 
         // Check if the gateway is in my own subnet, resolve directly with ARP
         for (InterfacesList::Element *el = _interfaces.head(); el; el = el->next()) 
@@ -121,13 +127,15 @@ Routing* Router::get_routing_of_address(const Address & dst_addr)
     {
         Routing* routing = el->object();
 
+        db<Router>(TRC) << "Router::Routing(" << dst_addr << ") | (" << (routing->mask() & dst_addr) << ") | (" << routing->destiny() << ")" << endl;
+
         if (routing->destiny() == (dst_addr & routing->mask())) 
         {
             return routing;
         }
     }
 
-    return nullptr;
+    return get_routing_of_address(Address("0.0.0.0"));
 }
 
 Router::MAC_Address Router::convert_ip_to_mac_address(const Address & address) 

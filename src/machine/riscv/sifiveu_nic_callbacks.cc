@@ -41,11 +41,36 @@ int SiFiveU_NIC::callbacks_handler()
 
         if (_deleted) break;
 
-        // Index of the next buffer that was received, will not use the _rx_cur because many packages can arrive 
-        // before the code reaches here
-        unsigned int i = _rx_callback_cur %= RX_BUFS;
         
-        _rx_callback_cur++;
+        
+        // Index of the next buffer that was received, will not use the _rx_cur because many packages can arrive before the code reaches here
+        // But, if some package was dropped due to 1) callbacks in empty or 2) the sender is the receiver, the _rx_callback_cur will not be updated
+        // must check again here in the callback handler each packages until reach to the one that is ours
+        unsigned int i = 0;
+        unsigned int jumps = 0;
+        while (true) 
+        {
+            i = _rx_callback_cur %= RX_BUFS;
+    
+            _rx_callback_cur++;
+
+            // Has found a package to process
+            if (_rx_ring[i].is_owner()) 
+            {
+                break;
+            }
+
+            jumps++;
+
+            if (jumps >= RX_BUFS) 
+            {
+                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Could not found a frame to process" << endl;
+            
+                continue;
+            }
+
+            db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Jumping one buffer that was dropped" << endl;
+        }
 
         Rx_Desc * descriptor = &_rx_ring[i];
         Buffer * buffer = _rx_buffers[i];
@@ -77,6 +102,8 @@ int SiFiveU_NIC::callbacks_handler()
                 db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Sending RX_DESC[" << i << "]" << endl;
 
                 wrapper->callCallback(buffer_info);
+
+                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Callback finished RX_DESC[" << i << "]" << endl;
             }
         }
 

@@ -124,15 +124,15 @@ else
 		&& read -p 'Press [Enter] key to close ...'" &
 		$(DEBUGGER) &
 		sleep 2
-		$(TERM) "$(PEER_EMULATOR)$(PEER_IMAGE) $(PEER_NETWORK) | $(TEE) $(PEER_OUTPUT) \
-		&& $(TCPDUMP) $(PEER).pcap > $(PEER).net \
-		&& read -p 'Press [Enter] key to close ...'" &
-		$(PEER_DEBUGGER) &
-		sleep 2
 		$(TERM) "$(GATEWAY_EMULATOR)$(GATEWAY_IMAGE) $(GATEWAY_NETWORK) | $(TEE) $(GATEWAY_OUTPUT) \
 		&& $(TCPDUMP) $(GATEWAY).pcap > $(GATEWAY).net \
 		&& read -p 'Press [Enter] key to close ...'" &
 		$(GATEWAY_DEBUGGER) &
+		sleep 2
+		$(TERM) "$(PEER_EMULATOR)$(PEER_IMAGE) $(PEER_NETWORK) | $(TEE) $(PEER_OUTPUT) \
+		&& $(TCPDUMP) $(PEER).pcap > $(PEER).net \
+		&& read -p 'Press [Enter] key to close ...'" &
+		$(PEER_DEBUGGER) &
 endif
 
 runall:		FORCE

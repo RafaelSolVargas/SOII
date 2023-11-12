@@ -22,8 +22,8 @@ protected:
     // ARP Protocol for NIC
     static const unsigned int PROTOCOL = Ethernet::PROTO_ARP;
 
-    static const unsigned int ARP_TIMEOUT = 10;
-    static const unsigned int ARP_TRIES = 3;
+    static const unsigned int ARP_TIMEOUT = 15;
+    static const unsigned int ARP_TRIES = 4;
 
     class WaitingResolutionItem 
     {
@@ -50,19 +50,15 @@ protected:
 
         ~WaitingResolutionItem() 
         {
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Lock" << endl;
             delete _lock;
             
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Semaphore" << endl;
             delete _sem;
 
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Handler" << endl;
             delete _func_handler;
 
             // If resolved then the resolve had already deleted the alarm
             if (!_resolved) 
             {
-                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Deleting Alarm" << endl;
                 delete _alarm;
             }
         }
@@ -91,14 +87,9 @@ protected:
             db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locking " << endl;
 
             _lock->p();
-
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Locked " << endl;
-
             // In this case the alarm was already triggered
             if (_destroyed == true) 
             {
-                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking and Returning" << endl;
-
                 _lock->v();
 
                 return;
@@ -111,11 +102,7 @@ protected:
     
             _response_address = response;
 
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::Unlocking" << endl;
-
             _lock->v();
-
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << this << ")::Resolve::ReleasingSemaphore" << endl;
 
             // Releases the waiting thread
             _sem->v();
@@ -141,17 +128,13 @@ protected:
         {
             db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::TimeoutReached" << endl;
 
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locking" << endl;
             
             item->_lock->p();
 
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Locked" << endl;
 
             // If the response arrive and accessed the Mutex before the TimeoutHandler
             if (item->_resolved == true) 
             {
-                db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::Unlocking And Returning" << endl;
-            
                 item->_lock->v();
 
                 return;
@@ -160,8 +143,6 @@ protected:
             item->_destroyed = true;
 
             item->_lock->v();
-
-            db<WaitingResolutionItem>(TRC) << "ARP::WaitingItem(" << item << ")::Timeout::ReleasingSemaphore" << endl;
 
             item->_sem->v();
         }
@@ -284,7 +265,6 @@ public:
     /// @param net_address 
     /// @return The MAC_Address of the destination net_address
     MAC_Address resolve(const Net_Address & searched_address);
-    bool is_gateway() { return _is_gateway; };
 
     Net_Address net_address() { return _net_address; }
     MAC_Address mac_address() { return _mac_address; }
@@ -312,7 +292,6 @@ private:
 
     ResolutionTable _resolutionTable;
     WaitingResolutionQueue _resolutionQueue;
-    bool _is_gateway;
 };
 
 __END_SYS

@@ -5,6 +5,7 @@
 
 __BEGIN_SYS
 
+// Publics
 void IP::send(SendingParameters parameters, const void * data, unsigned int size) 
 {
     db<IP>(TRC) << "IP::send(parameters= " << parameters << ",size=" << size << ",data=" << data << ")" << endl;
@@ -22,7 +23,6 @@ void IP::send(SendingParameters parameters, const void * data, unsigned int size
     // Copy the data into an NonCBuffer and send it
     void * buffered_data_ptr = nw_buffers.alloc_nc(const_cast<char*>(reinterpret_cast<const char*>(data)), size);
     
-    // TODO -> Create an queue and a Thread to send the data and return it before actually sending to the NIC
     send_buffered_data(parameters, buffered_data_ptr);
 }
 
@@ -76,6 +76,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
     }
 }
 
+// Privates
 void IP::send_data(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, const void * data, unsigned int data_size) 
 {
     // Allocate an NIC Buffer and create the Header inside it without the data
@@ -103,12 +104,16 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
         bool is_last = data_sended + FRAGMENT_MTU >= total_size;
 
         FragmentFlags flag = is_last ? FragmentFlags::LAST_FRAGMENT : FragmentFlags::MID_FRAGMENT;
+        if (map->quant_chunks() == 1) 
+        {
+            flag = FragmentFlags::DATAGRAM;
+        }
 
         unsigned int fragment_size = is_last ? total_size - data_sended : FRAGMENT_MTU;
 
         db<IP>(TRC) << "IP::Fragment[" << offset << "] => " 
                     << " Data_Sended=" << data_sended
-                    << " Is_Last=" << is_last
+                    << " Flag=" << flag
                     << " fragment_size=" << fragment_size << endl;
 
         BufferInfo * buffer = prepare_header_in_nic_buffer(dst, prot, id, flag, total_size, fragment_size, offset);
