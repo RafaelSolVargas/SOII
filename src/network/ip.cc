@@ -51,7 +51,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
     else if (total_size <= Header::FRAGMENT_MTU) 
     {
         // Allocate an NIC Buffer and create the Header inside it without the data
-        NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(parameters.destiny, parameters.protocol, id, FragmentFlags::DATAGRAM, total_size, total_size, 0);
+        NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(_address, parameters.destiny, parameters.protocol, id, FragmentFlags::DATAGRAM, total_size, total_size, 0);
 
         // Copy the data to the Header
         Header * header = reinterpret_cast<Header *>(buffer->data());
@@ -80,7 +80,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
 void IP::send_data(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, const void * data, unsigned int data_size) 
 {
     // Allocate an NIC Buffer and create the Header inside it without the data
-    NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(dst, prot, id, flags, data_size, data_size, 0);
+    NIC<Ethernet>::BufferInfo * buffer = prepare_header_in_nic_buffer(_address, dst, prot, id, flags, data_size, data_size, 0);
 
     // Copy the data to the Header
     Header * header = reinterpret_cast<Header *>(buffer->data());
@@ -90,11 +90,11 @@ void IP::send_data(const Address & dst, const Protocol & prot, unsigned int id, 
     _nic->send(buffer);
 }
 
-void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, unsigned int id, AllocationMap * map) 
+void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, AllocationMap * map, bool reuse_header, Header header) 
 {
     unsigned long total_size = map->original_size();
 
-    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram [" << id << "] with " << total_size << " bytes of data" << endl;
+    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram with " << total_size << " bytes of data" << endl;
 
     unsigned long data_sended = 0;
     unsigned int offset = 0;
@@ -116,7 +116,17 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
                     << " Flag=" << flag
                     << " fragment_size=" << fragment_size << endl;
 
-        BufferInfo * buffer = prepare_header_in_nic_buffer(dst, prot, id, flag, total_size, fragment_size, offset);
+        BufferInfo * buffer = nullptr;
+        if (reuse_header) 
+        {
+            buffer = prepare_header_in_nic_buffer(header.source(), header.destiny(), header.protocol(), header.id(), flag, total_size, fragment_size, offset);
+        }
+        else 
+        {
+            unsigned int id = get_next_id();
+
+            buffer = prepare_header_in_nic_buffer(_address, dst, prot, id, flag, total_size, fragment_size, offset);
+        }
 
         Header * header = reinterpret_cast<Header *>(buffer->data());
 
@@ -132,7 +142,7 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
     }
 }
 
-NIC<Ethernet>::BufferInfo* IP::prepare_header_in_nic_buffer(const Address & dst, const Protocol & prot, unsigned int id, 
+NIC<Ethernet>::BufferInfo* IP::prepare_header_in_nic_buffer(const Address & src, const Address & dst, const Protocol & prot, unsigned int id, 
 FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned int offset) 
 {
     // Calculate the required size, adding the space for creating and fragment and a datagram
@@ -145,7 +155,7 @@ FragmentFlags flags, unsigned int total_size, unsigned int data_size, unsigned i
     NIC<Ethernet>::BufferInfo * buffer = _nic->alloc(dst_mac, PROTOCOL, required_size);
 
     // Create an datagram 
-    new (buffer->data()) Header(_address, dst, prot, total_size, id, flags, offset);
+    new (buffer->data()) Header(src, dst, prot, total_size, id, flags, offset);
 
     return buffer;
 }
@@ -167,19 +177,17 @@ int IP::sending_queue_function()
 
         if (_deleted) break;
 
-        DatagramBufferedRX * buffered_datagram = _queue.remove()->object();
+        DatagramBufferedRX * data_info = _queue.remove()->object();
 
-        SendingParameters config = buffered_datagram->config();
+        SendingParameters config = data_info->config();
 
-        unsigned int id = get_next_id();
+        db<IP>(INF) << "IP::SendingQueueThread => Starting Fragmentation of Datagram " << endl;
 
-        db<IP>(INF) << "IP::SendingQueueThread => Starting Fragmentation of Datagram " << id << endl;
-
-        send_buffered_with_fragmentation(config.destiny, config.protocol, id, buffered_datagram->map());
+        send_buffered_with_fragmentation(config.destiny, config.protocol, data_info->map(), data_info->has_header(), data_info->header());
 
         _stats.tx_datagrams++;
 
-        delete buffered_datagram;
+        delete data_info;
     }
 
     db<IP>(INF) << "IP::~SendingThread()" << endl;

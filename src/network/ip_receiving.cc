@@ -40,8 +40,11 @@ void IP::handle_datagram(Header * datagram)
 
             SendingParameters parameters = SendingParameters(datagram->destiny(), datagram->protocol(), HIGH);
 
+            // Create an Header to be reused when sending it
+            Header header_to_reuse = Header(datagram->source(), datagram->destiny(), datagram->protocol(), datagram->data_size(), datagram->id(), DATAGRAM, 0);
+
             // Insert the datagram in the queue to be sended
-            DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map); 
+            DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, header_to_reuse); 
 
             // Insert into sending queue the information of this Datagram
             _queue.insert(datagram_buffered->link());

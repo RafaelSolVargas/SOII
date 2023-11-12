@@ -127,8 +127,6 @@ Routing* Router::get_routing_of_address(const Address & dst_addr)
     {
         Routing* routing = el->object();
 
-        db<Router>(TRC) << "Router::Routing(" << dst_addr << ") | (" << (routing->mask() & dst_addr) << ") | (" << routing->destiny() << ")" << endl;
-
         if (routing->destiny() == (dst_addr & routing->mask())) 
         {
             return routing;

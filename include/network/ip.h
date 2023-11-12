@@ -88,34 +88,6 @@ public:
         Count next_id;
     };
 
-protected:
-    typedef NonCBuffer::AllocationMap AllocationMap;
-
-
-    // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
-    class DatagramBufferedRX 
-    {
-    public:
-        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map) : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
-
-        typedef typename Queue<DatagramBufferedRX>::Element Element;
-    
-        typedef Priority Criterion;
-
-        typedef Ordered_Queue<DatagramBufferedRX, Priority, Scheduler<DatagramBufferedRX>::Element> Queue;
-        
-        Queue::Element * link() { return &_link; }
-        SendingParameters config() const { return _configuration; }
-        MemAllocationMap * map() { return _allocation_map; }
-
-    private:
-        Queue::Element _link;
-        SendingParameters _configuration;
-        MemAllocationMap * _allocation_map;
-    };
-
-    typedef DatagramBufferedRX::Queue Queue;
-
 public:
     class Header
     {
@@ -126,6 +98,8 @@ public:
         static const unsigned int TIME_TO_LIVE = 10;
 
         static const unsigned int FRAGMENT_MTU = NIC<Ethernet>::MTU - (HEADER_LENGTH * 4);
+
+        Header() { }
 
         /// @brief Creates an Datagram with only the Header
         /// @param src Source IP Address
@@ -158,6 +132,7 @@ public:
         }
 
         Address destiny() { return _dst; }
+        Address source() { return _src; }
         Protocol protocol() { return _protocol; }
 
         /// @brief The data stored in this Datagram, it's a virtual pointer to the data after that, so it's required
@@ -227,6 +202,43 @@ public:
     static const unsigned int fragment_mtu() { return Header::FRAGMENT_MTU; }
     
     static const Address broadcast() { return Address::BROADCAST; }
+
+protected:
+    typedef NonCBuffer::AllocationMap AllocationMap;
+
+
+    // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
+    class DatagramBufferedRX 
+    {
+    public:
+        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map) 
+            : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
+
+        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map, const Header & header) 
+            : _link(this, config.priority), _configuration(config), _allocation_map(map), _header(header), _has_header(true) { }
+
+        typedef typename Queue<DatagramBufferedRX>::Element Element;
+    
+        typedef Priority Criterion;
+
+        typedef Ordered_Queue<DatagramBufferedRX, Priority, Scheduler<DatagramBufferedRX>::Element> Queue;
+        
+        Queue::Element * link() { return &_link; }
+        SendingParameters config() const { return _configuration; }
+        MemAllocationMap * map() { return _allocation_map; }
+        Header header() { return _header; }
+        bool has_header() { return _has_header; }
+
+    private:
+        Queue::Element _link;
+        SendingParameters _configuration;
+        MemAllocationMap * _allocation_map;
+        Header _header;
+        bool _has_header;
+    };
+
+    typedef DatagramBufferedRX::Queue Queue;
+
 };
 
 class Router;
@@ -277,9 +289,8 @@ protected:
 // Sending Methods
 private:
     /// @brief Send the data stored in the AllocationMap with Fragmentation, should not be called if the data can be stored in one Header
-    /// @param id Identifier of datagram
     /// @param map AllocationMap returned by the BuffersHandler::alloc_nc() that contains more than one chunk
-    void send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, unsigned int id, AllocationMap * map);
+    void send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, AllocationMap * map, bool reuse_header, Header header);
 
     /// @brief Send the contiguous memory to the NIC
     /// @param id Identifier of datagram
@@ -292,7 +303,7 @@ private:
     /// @param total_size Total size of the Datagram, including all the fragments (without sizeof(Header))
     /// @param data_size The data to be stored in the Header (without sizeof(Header))
     /// @returns The buffer to be passed to the NIC
-    BufferInfo* prepare_header_in_nic_buffer(const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, 
+    BufferInfo* prepare_header_in_nic_buffer(const Address & src, const Address & dst, const Protocol & prot, unsigned int id, FragmentFlags flags, 
     unsigned int total_size, unsigned int data_size, unsigned int offset);
 
     /// @brief Get the next Datagram identifier

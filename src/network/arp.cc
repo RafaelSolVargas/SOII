@@ -33,8 +33,6 @@ void ARP::nic_callback(BufferInfo * bufferInfo)
 
 ARP::MAC_Address ARP::resolve(const Net_Address & searched_address) 
 {
-    db<ARP>(TRC) << "ARP::Resolve(addr=" << searched_address << ")" << endl;
-
     TableEntry::Element * el = _resolutionTable.search_key(searched_address);
 
     // If exists in table return the cached
@@ -44,6 +42,8 @@ ARP::MAC_Address ARP::resolve(const Net_Address & searched_address)
 
         return el->object()->mac_address();
     }
+
+    db<ARP>(TRC) << "ARP::Resolving(addr=" << searched_address << ")" << endl;
 
     for(unsigned int i = 0; i < ARP_TRIES; i++) 
     {
