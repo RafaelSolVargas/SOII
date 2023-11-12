@@ -129,6 +129,48 @@ public:
             {
                 _length = htons((FRAGMENT_MTU + sizeof(Header)));
             }
+
+            // Calculate the checksum
+            _checksum = compute_checksum();
+        }
+
+        bool verify_checksum() 
+        {
+            unsigned short checksum = compute_checksum(false);
+
+            db<Header>(TRC) << "Header::ChecksumVerified=" << bin << checksum << dec << endl; 
+
+            return (checksum == 0xFFFF);
+        }
+
+        unsigned short compute_checksum(bool apply_complement = true) 
+        {
+            // Converte o cabeçalho para um array de bytes
+            unsigned short* headerBytes = reinterpret_cast<unsigned short*>(this);
+            int blocks_quant = (HEADER_LENGTH * 4) / sizeof(unsigned short);
+
+            // Inicializa a soma
+            int sum = 0;
+
+            // Soma todas as palavras de 16 bits no cabeçalho
+            for (int i = 0; i < blocks_quant; ++i) 
+            {
+                sum += headerBytes[i];
+            }
+
+            // Leva em consideração os transportes de overflow
+            while (sum >> 16) 
+            {
+                sum = (sum & 0xFFFF) + (sum >> 16);
+            }
+
+            unsigned short checksum = static_cast<unsigned short>(sum);
+            if (apply_complement) 
+            {
+                checksum = static_cast<unsigned short>(~sum);
+            }            
+
+            return checksum;
         }
 
         Address destiny() { return _dst; }
@@ -426,7 +468,6 @@ private:
     typedef Routing::RoutingList RoutingList;
 
 public:
-
     Router(ARP * arp, const MAC_Address & mac_addr) : _arp(arp) 
     {
         populate_paths_table(mac_addr);

@@ -27,6 +27,17 @@ void IP::nic_callback(BufferInfo * bufferInfo)
 
 void IP::handle_datagram(Header * datagram) 
 {
+    if (datagram->verify_checksum()) 
+    {
+        db<IP>(TRC) << "IP::DatagramWellFormed" << endl;
+    } 
+    else
+    {
+        db<IP>(TRC) << "IP::DatagramWithTransmitErrors" << endl;
+
+        return;
+    }
+
     if (datagram->destiny() != _address) 
     {
         if (_router->is_gateway()) 
