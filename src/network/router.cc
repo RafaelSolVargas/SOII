@@ -10,7 +10,7 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
         db<ARP>(TRC) << "ARP::PopulatingTable::Sender" << endl;
 
         // Creates interface with Network One
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.2"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_arp, Address("150.162.60.2"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
         _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.60.1")))->link());
@@ -26,7 +26,7 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
         db<ARP>(TRC) << "ARP::PopulatingTable::Receiver" << endl;
 
         // Creates interface with Network Two
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.50"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_arp, Address("150.162.1.50"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default Route
         _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.1.1")))->link());
@@ -42,10 +42,10 @@ void Router::populate_paths_table(const MAC_Address & mac_addr)
         db<ARP>(TRC) << "ARP::PopulatingTable::Gateway" << endl;
 
         // Interface with Network One
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.60.1"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_arp, Address("150.162.60.1"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Interface with Network Two
-        _interfaces.insert((new (SYSTEM) RouterInterface(_nic, _arp, Address("150.162.1.60"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
+        _interfaces.insert((new (SYSTEM) RouterInterface(_arp, Address("150.162.1.60"), Address("255.255.255.0"), Address("255.255.0.0")))->link());
 
         // Default route
         _routings.insert((new (SYSTEM) Routing(Address("0.0.0.0"), Address("255.255.255.0"), Address("150.162.1.1")))->link());

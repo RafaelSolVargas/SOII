@@ -356,8 +356,8 @@ public:
     typedef Simple_List<RouterInterface> InterfacesList;
     typedef InterfacesList::Element Element;
 
-    RouterInterface(SiFiveU_NIC * nic, ARP * arp, const Address & interface_address, const Address & subnet_mask, const Address & class_mask) : 
-        _nic(nic), _arp(arp), _interface_address(interface_address), _subnet_mask(subnet_mask), _class_mask(class_mask), _link(this) { }
+    RouterInterface(ARP * arp, const Address & interface_address, const Address & subnet_mask, const Address & class_mask) 
+        : _arp(arp), _interface_address(interface_address), _subnet_mask(subnet_mask), _class_mask(class_mask), _link(this) { }
 
     Element * link() { return &_link; }
 
@@ -376,7 +376,6 @@ public:
     }
 
 private:
-    SiFiveU_NIC * _nic;
     ARP * _arp;
     Address _interface_address;
     Address _subnet_mask;
@@ -428,7 +427,7 @@ private:
 
 public:
 
-    Router(SiFiveU_NIC * nic, ARP * arp, const MAC_Address & mac_addr) : _nic(nic), _arp(arp) 
+    Router(ARP * arp, const MAC_Address & mac_addr) : _arp(arp) 
     {
         populate_paths_table(mac_addr);
     }
@@ -452,7 +451,6 @@ private:
 
     InterfacesList _interfaces;
     RoutingList _routings;
-    SiFiveU_NIC * _nic;
     ARP * _arp;
     bool _is_gateway;
 };

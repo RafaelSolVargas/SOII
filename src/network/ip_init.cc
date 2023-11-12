@@ -40,7 +40,7 @@ IP::IP(NIC<Ethernet> * nic) : _nic(reinterpret_cast<SiFiveU_NIC*>(nic))
     _arp = ARP::init(_nic, _address);
 
     // Initialize the router
-    _router = new (SYSTEM) Router(_nic, _arp, _nic->address());
+    _router = new (SYSTEM) Router(_arp, _nic->address());
 }
 
 void IP::configure_sending_queue() 
