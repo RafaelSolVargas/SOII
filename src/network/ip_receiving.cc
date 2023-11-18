@@ -99,10 +99,12 @@ void IP::handle_datagram(Header * datagram)
 
 void IP::handle_fragmentation(Header * fragment) 
 {
+    db<IP>(TRC) << "IP::Reassembler::HandlingFragment" << endl;
+
     // Gets the datagram handling the reassembling, if none the method already starts one
     DatagramReassembling * datagram = get_reassembling_datagram(fragment);
 
-    if (*datagram->get_fragment_status(fragment->offset()) == true)
+    if (datagram->get_fragment_status(fragment->offset())->received() == true)
     {
         // Fragment is duplicated
         return;
@@ -113,6 +115,8 @@ void IP::handle_fragmentation(Header * fragment)
 
     // Copy the fragment data into the reassembling datagram
 
+
+    db<IP>(TRC) << "IP::Reassembler::DatagramReassembling=" << *datagram << endl;
 
     // If completed, handle the datagram being received
     if (datagram->reassembling_completed()) 
@@ -135,6 +139,8 @@ IP::DatagramReassembling * IP::get_reassembling_datagram(Header * fragment)
             return datagram;
         }
     }
+
+    db<IP>(TRC) << "IP::Reassembler::Creating an new DatagramReassembling" << endl;
 
     // If not, build one
     MemAllocationMap * map = nw_buffers.alloc_nc(MAX_DATAGRAM_SIZE);

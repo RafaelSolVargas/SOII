@@ -291,19 +291,36 @@ protected:
     class DatagramReassembling 
     {
     private:
+        typedef unsigned int FragmentOffset;
         static const unsigned int MAX_FRAGMENTS_QUANT = MAX_DATAGRAM_SIZE / Header::FRAGMENT_MTU;
+
+        /// @brief Class to hold informations about the status of each fragment, contains the definition of a Hash
+        class FragmentStatus 
+        {
+        public:
+            typedef Simple_Hash<FragmentStatus, MAX_FRAGMENTS_QUANT, FragmentOffset> FragmentsReceivedHash;
+            typedef FragmentsReceivedHash::Element Element;
+         
+            FragmentStatus(FragmentOffset offset, bool received) : _link(this, offset), _received(received) { }
+
+            Element * link() { return &_link; }
+            bool received() { return _received; }
+            void received(bool received) { _received = received; }
+
+        private:
+            Element _link;
+            bool _received;
+        }; 
 
     public:
         typedef Simple_List<DatagramReassembling> ReassemblingList;
         typedef ReassemblingList::Element Element;
-        typedef unsigned int FragmentOffset;
-        typedef bool FragmentStatus;
 
-        typedef Simple_Hash<FragmentStatus, MAX_FRAGMENTS_QUANT, FragmentOffset> FragmentsReceivedHash;
+        typedef FragmentStatus::FragmentsReceivedHash FragmentsReceivedHash;
 
         DatagramReassembling(Header * header, MemAllocationMap * map) : _link(this), _header(header), _allocation_map(map), 
         _src_address(header->source()), _dst_address(header->destiny()), _prot(header->protocol()), _id(header->id()),
-        _reassembling_completed(false), _last_fragment_received(false), _fragments_quant(0)
+        _is_completed(false), _has_last_fragment(false), _total_fragments(0), _fragments_arrived(0)
         { }
 
         ~DatagramReassembling() 
@@ -321,13 +338,28 @@ protected:
 
         Element * link() { return &_link; }
 
-        bool reassembling_completed() { return _reassembling_completed; }
+        bool reassembling_completed() { return _is_completed; }
 
         FragmentsReceivedHash fragments_received_status() { return _fragments_status; }
 
+        /// @brief Get the status of received of a fragment with an offset 
+        /// @param offset Offset of fragment to check
+        /// @return ptr to FragmentStatus
         FragmentStatus * get_fragment_status(FragmentOffset offset) 
         {
-            return _fragments_status.search(offset)->object();
+            FragmentsReceivedHash::Element * el = _fragments_status.search_key(offset);
+
+            // Check doesn't exists in hash, create as false
+            if (!el) 
+            {
+                FragmentStatus * status = new (SYSTEM) FragmentStatus(offset, false); 
+
+                _fragments_status.insert(status->link());
+
+                return status;
+            } 
+
+            return el->object();
         }
 
         /// @brief Updates the DatagramReassembling with the informations of the fragment arriving, changes
@@ -336,10 +368,12 @@ protected:
         /// @param fragment 
         void receive_fragment(Header * fragment) 
         {
+            _fragments_arrived++;
+
             if (fragment->flags() == FragmentFlags::LAST_FRAGMENT) 
             {
-                _last_fragment_received = true;
-                _fragments_quant = fragment->offset() + 1;
+                _has_last_fragment = true;
+                _total_fragments = fragment->offset() + 1;
                 
                 // Now that he knowns the last datagram is possibly the calculate the data size
                 unsigned int data_size = (fragment->offset() * Header::FRAGMENT_MTU) + fragment->data_size();
@@ -349,13 +383,13 @@ protected:
             }
 
             // Mark the fragment as received, the IP is responsible for checking the status to see if it's duplicated
-            *get_fragment_status(fragment->offset()) = true;
+            get_fragment_status(fragment->offset())->received(true);
 
             // If already knowns the quant of fragments, for each fragment that receive, check if the reassembly is completed 
-            if (_last_fragment_received) 
+            if (_has_last_fragment) 
             {
                 // Pass in all fragment status
-                for (FragmentOffset offset = 0; offset < _fragments_quant; offset++) 
+                for (FragmentOffset offset = 0; offset < _total_fragments; offset++) 
                 {
                     bool received = _fragments_status.search_key(offset);
                     if (!received) 
@@ -364,16 +398,31 @@ protected:
                     }
 
                     // If reaches here, all fragments are marked as received
-                    if (received && offset == _fragments_quant - 1) 
+                    if (received && offset == _total_fragments - 1) 
                     {
-                        _reassembling_completed = true;
+                        _is_completed = true;
                     }
                 }
             }
         }
 
         /// @brief When the last fragment reaches, mark this as the total quant of fragments that the datagram contains
-        unsigned int fragments_quant() { return _fragments_quant; }
+        unsigned int fragments_quant() { return _total_fragments; }
+
+        friend Debug & operator<<(Debug & db, const DatagramReassembling & h) {
+            db << "{header=" << *h._header
+            << ",src=" << h._src_address
+            << ",dst=" << h._dst_address
+            << ",prot=" << h._prot
+            << ",id="  << h._id
+            << ",fragments_received=" << h._fragments_arrived
+            << ",total_fragments=" << h._total_fragments
+            << ",is_completed=" << h._is_completed
+            << ",has_last_fragment=" << h._has_last_fragment
+            << "}";
+
+            return db;
+        }
 
     private:
         Element _link;
@@ -385,9 +434,11 @@ protected:
         unsigned int _id;
         
         FragmentsReceivedHash _fragments_status;
-        bool _reassembling_completed;
-        bool _last_fragment_received;
-        unsigned int _fragments_quant;
+        bool _is_completed;
+        bool _has_last_fragment;
+        unsigned int _total_fragments;
+
+        unsigned int _fragments_arrived;
     };
 
     typedef DatagramReassembling::ReassemblingList ReassemblingList;

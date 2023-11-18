@@ -66,7 +66,10 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
     // Fragmentation will be required 
     else
     {
-        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map); 
+        // Create this virtual header to pass the information of the ID to be used in fragmentation
+        Header header = Header(_address, parameters.destiny, parameters.protocol, 0, id, FragmentFlags::MID_FRAGMENT, 0);
+
+        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, header); 
 
         // Insert into sending queue the information of this Datagram
         _queue.insert(datagram_buffered->link());
@@ -94,7 +97,7 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 {
     unsigned long total_size = map->original_size();
 
-    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram with " << total_size << " bytes of data" << endl;
+    db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram with " << total_size << " bytes of data. Reuse => " << reuse_header << endl;
 
     unsigned long data_sended = 0;
     unsigned int offset = 0;
@@ -104,7 +107,7 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
         bool is_last = data_sended + FRAGMENT_MTU >= total_size;
 
         FragmentFlags flag = is_last ? FragmentFlags::LAST_FRAGMENT : FragmentFlags::MID_FRAGMENT;
-        if (map->quant_chunks() == 1) 
+        if (map->quant_chunks() == 1 && map->chunks_sizes()[0] <= FRAGMENT_MTU) 
         {
             flag = FragmentFlags::DATAGRAM;
         }

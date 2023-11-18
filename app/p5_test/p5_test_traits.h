@@ -95,7 +95,7 @@ template<> struct Traits<Application>: public Traits<Build>
     static const unsigned int HEAP_SIZE = Traits<Machine>::HEAP_SIZE;
     static const unsigned int MAX_THREADS = Traits<Machine>::MAX_THREADS;
     static const unsigned int BUFFER_ENABLED = true;
-    static const unsigned int NET_BUFFERS_CLIENTS = 1;
+    static const unsigned int NET_BUFFERS_CLIENTS = 10;
 };
 
 
@@ -129,7 +129,7 @@ template<> struct Traits<NicBuffers>: public Traits<Build>
 };
 
 
-template<> struct Traits<WaitingResolutionItem>: public Traits<Build>
+template<> struct Traits<WaitingResolutionItem>: public Traits<Debug>
 {
     static const bool debugged = false;
 
@@ -137,6 +137,15 @@ template<> struct Traits<WaitingResolutionItem>: public Traits<Build>
     static const bool warning = false;
     static const bool info    = false;
     static const bool trace   = false;
+};
+
+template<> struct Traits<ARP>: public Traits<Debug>
+{
+    static const bool debugged = false;
+    static const bool error   = true;
+    static const bool warning = true;
+    static const bool info    = true;
+    static const bool trace   = true;
 };
 
 
