@@ -15,6 +15,14 @@ void IP::nic_callback(BufferInfo * bufferInfo)
 
     db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
 
+    // If this host is not a gateway and is not the destination, then discard the fragment
+    if (fragment->destiny() != _address && !_router->is_gateway()) 
+    {
+        db<IP>(TRC) << "IP::Ignoring datagram that is not for me!" << endl;
+    
+        return;
+    }
+
     if (fragment->flags() == FragmentFlags::DATAGRAM) 
     {
         handle_datagram(fragment);
@@ -91,14 +99,54 @@ void IP::handle_datagram(Header * datagram)
 
 void IP::handle_fragmentation(Header * fragment) 
 {
-    if (fragment->flags() == FragmentFlags::LAST_FRAGMENT) 
-    {
+    // Gets the datagram handling the reassembling, if none the method already starts one
+    DatagramReassembling * datagram = get_reassembling_datagram(fragment);
 
-    } 
-    else // Mid Fragment
+    if (*datagram->get_fragment_status(fragment->offset()) == true)
     {
-
+        // Fragment is duplicated
+        return;
     }
+
+    // Update internal informations of the datagram
+    datagram->receive_fragment(fragment);
+
+    // Copy the fragment data into the reassembling datagram
+
+
+    // If completed, handle the datagram being received
+    if (datagram->reassembling_completed()) 
+    {
+        handle_datagram(datagram->header());
+    }
+}
+
+
+IP::DatagramReassembling * IP::get_reassembling_datagram(Header * fragment) 
+{
+    // Check if there is already an constructed datagram reassembling
+    for (DatagramReassembling::Element *el = _reassemblingList.head(); el; el = el->next()) 
+    {
+        DatagramReassembling* datagram = el->object();
+
+        if (datagram->source() == fragment->source() && datagram->destiny() == fragment->destiny() 
+         && datagram->protocol() == fragment->protocol() && datagram->id() == fragment->id()) 
+        {
+            return datagram;
+        }
+    }
+
+    // If not, build one
+    MemAllocationMap * map = nw_buffers.alloc_nc(MAX_DATAGRAM_SIZE);
+
+    Header * header = new (SYSTEM) Header(fragment->source(), fragment->destiny(), fragment->protocol(), 0, fragment->id(), FragmentFlags::DATAGRAM, 0);
+
+    DatagramReassembling * datagram = new (SYSTEM) DatagramReassembling(header, map);
+
+    // Insert into list
+    _reassemblingList.insert(datagram->link());
+
+    return datagram;
 }
 
 __END_SYS

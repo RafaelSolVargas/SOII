@@ -55,6 +55,20 @@ public:
         return map;
     };
 
+    /// @brief Makes a allocation that could be fragmented, the ptr returned could not be used directly, 
+    /// must be used only with the interface methods of this class
+    /// @param ptr The address of the memory to be allocated
+    /// @param elements The quantity of elements to be allocated
+    /// @return 
+    AllocationMap * alloc_nc(unsigned long elements = 1) 
+    {
+        unsigned long bytes = elements * sizeof(T);
+
+        AllocationMap * map = NCbuffer()->alloc(bytes);
+
+        return map;
+    };
+
     /// @brief Substitutes the memcpy method, copying the memory from the buffer to a destiny address
     /// @param ptr The ptr returned by the alloc_c()
     /// @param destiny The address to be copied

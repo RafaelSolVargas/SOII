@@ -26,6 +26,8 @@ protected:
     // IP Protocol for NIC
     static const unsigned int PROTOCOL = Ethernet::PROTO_IP;
 
+    static const unsigned int MAX_DATAGRAM_SIZE = 65000;
+
 public:
     typedef unsigned char Protocol;
     enum {
@@ -133,6 +135,10 @@ public:
             // Calculate the checksum
             _checksum = compute_checksum();
         }
+
+        /// @brief Changes the length of this datagram, will be used when discovering the total size of a reassembling datagram
+        /// @param new_length The data length, doesn't contains the sizeof(Header)
+        void length(unsigned int new_length) { _length = htons(new_length + sizeof(Header)); }
 
         bool verify_checksum() 
         {
@@ -281,6 +287,110 @@ protected:
 
     typedef DatagramBufferedRX::Queue Queue;
 
+    // Class to hold datagrams being defragmented
+    class DatagramReassembling 
+    {
+    private:
+        static const unsigned int MAX_FRAGMENTS_QUANT = MAX_DATAGRAM_SIZE / Header::FRAGMENT_MTU;
+
+    public:
+        typedef Simple_List<DatagramReassembling> ReassemblingList;
+        typedef ReassemblingList::Element Element;
+        typedef unsigned int FragmentOffset;
+        typedef bool FragmentStatus;
+
+        typedef Simple_Hash<FragmentStatus, MAX_FRAGMENTS_QUANT, FragmentOffset> FragmentsReceivedHash;
+
+        DatagramReassembling(Header * header, MemAllocationMap * map) : _link(this), _header(header), _allocation_map(map), 
+        _src_address(header->source()), _dst_address(header->destiny()), _prot(header->protocol()), _id(header->id()),
+        _reassembling_completed(false), _last_fragment_received(false), _fragments_quant(0)
+        { }
+
+        ~DatagramReassembling() 
+        {
+            delete _header;
+            delete _allocation_map;
+        }
+
+        Header * header() { return _header; }
+        Address source() { return _src_address; }
+        Address destiny() { return _dst_address; }
+        Protocol protocol() { return _prot; }
+        unsigned int id() { return _id; }
+        MemAllocationMap * map() { return _allocation_map; }
+
+        Element * link() { return &_link; }
+
+        bool reassembling_completed() { return _reassembling_completed; }
+
+        FragmentsReceivedHash fragments_received_status() { return _fragments_status; }
+
+        FragmentStatus * get_fragment_status(FragmentOffset offset) 
+        {
+            return _fragments_status.search(offset)->object();
+        }
+
+        /// @brief Updates the DatagramReassembling with the informations of the fragment arriving, changes
+        /// the booleans of completed and total quant, doesn't execute the copy of the fragment data into the map
+        /// this must be executed by the IP directly
+        /// @param fragment 
+        void receive_fragment(Header * fragment) 
+        {
+            if (fragment->flags() == FragmentFlags::LAST_FRAGMENT) 
+            {
+                _last_fragment_received = true;
+                _fragments_quant = fragment->offset() + 1;
+                
+                // Now that he knowns the last datagram is possibly the calculate the data size
+                unsigned int data_size = (fragment->offset() * Header::FRAGMENT_MTU) + fragment->data_size();
+
+                // Update the length in the Header being reassembled
+                _header->length(data_size);
+            }
+
+            // Mark the fragment as received, the IP is responsible for checking the status to see if it's duplicated
+            *get_fragment_status(fragment->offset()) = true;
+
+            // If already knowns the quant of fragments, for each fragment that receive, check if the reassembly is completed 
+            if (_last_fragment_received) 
+            {
+                // Pass in all fragment status
+                for (FragmentOffset offset = 0; offset < _fragments_quant; offset++) 
+                {
+                    bool received = _fragments_status.search_key(offset);
+                    if (!received) 
+                    {
+                        break;
+                    }
+
+                    // If reaches here, all fragments are marked as received
+                    if (received && offset == _fragments_quant - 1) 
+                    {
+                        _reassembling_completed = true;
+                    }
+                }
+            }
+        }
+
+        /// @brief When the last fragment reaches, mark this as the total quant of fragments that the datagram contains
+        unsigned int fragments_quant() { return _fragments_quant; }
+
+    private:
+        Element _link;
+        Header * _header;
+        MemAllocationMap * _allocation_map;
+        Address _src_address;
+        Address _dst_address;
+        Protocol _prot;
+        unsigned int _id;
+        
+        FragmentsReceivedHash _fragments_status;
+        bool _reassembling_completed;
+        bool _last_fragment_received;
+        unsigned int _fragments_quant;
+    };
+
+    typedef DatagramReassembling::ReassemblingList ReassemblingList;
 };
 
 class Router;
@@ -292,6 +402,7 @@ private:
     typedef IPDefinitions::BufferInfo BufferInfo;
     typedef IPDefinitions::AllocationMap AllocationMap;
     typedef IPDefinitions::Statistics Statistics;
+    typedef IPDefinitions::DatagramReassembling DatagramReassembling;
 
 public:
     typedef IPDefinitions::Address Address;
@@ -354,7 +465,10 @@ private:
 // Receiving Methods
 private:
     void handle_fragmentation(Header * fragment);
+
     void handle_datagram(Header * datagram);
+
+    DatagramReassembling * get_reassembling_datagram(Header * fragment);
 
     static void class_nic_callback(BufferInfo * bufferInfo);
     void nic_callback(BufferInfo * bufferInfo);
@@ -368,6 +482,8 @@ private:
 
 private:
     Address _address;
+
+    ReassemblingList _reassemblingList;
 
     static IP * _ip;
     SiFiveU_NIC * _nic;
