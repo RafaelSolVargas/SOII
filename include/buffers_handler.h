@@ -89,13 +89,11 @@ public:
     /// @param destiny The address to be copied
     /// @param bytes The size in bytes to be copied
     /// @param reset Reset the data size already copied of this allocation
-    void copy_nc(void * ptr, void * destiny, unsigned long bytes, bool reset = false)
+    void copy_to_mem(void * ptr, void * destiny, unsigned long bytes, bool reset = false)
     {
-        db<NicBuffers>(TRC) << "BuffersHandler::copy_nc(ptr=" << ptr << ",destiny=" << destiny << ", bytes=" << bytes << ")" << endl;
+        db<NicBuffers>(TRC) << "BuffersHandler::copy_to_mem(ptr=" << ptr << ",destiny=" << destiny << ", bytes=" << bytes << ")" << endl;
 
         AllocationMap * map = reinterpret_cast<AllocationMap *>(ptr);
-
-        map->log_allocation();
 
         unsigned long copied = 0;
 
@@ -116,9 +114,9 @@ public:
                 size_to_cp = bytes;
             }
 
-            db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Source Address => " << &source_addr  << endl;
-            db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Destiny Address => " << destiny  << endl;
-            db<NicBuffers>(TRC) << "BuffersHandler::copy_nc::Chunk[" << i << "] - Size To Copy => " << size_to_cp << " bytes" << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_mem::Chunk[" << i << "] - Source Address => " << &source_addr  << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_mem::Chunk[" << i << "] - Destiny Address => " << destiny  << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_mem::Chunk[" << i << "] - Size To Copy => " << size_to_cp << " bytes" << endl;
             
             // Copy the data
             memcpy(destiny, source_addr, size_to_cp);
@@ -134,6 +132,59 @@ public:
             {
                 break;
             }
+        }
+    };
+
+    /// @brief Substitutes the memcpy method, copying the memory from an source address into the buffer 
+    /// @param map The AllocationMap returned by the alloc_nc()
+    /// @param source The address to be copied into the buffer
+    /// @param bytes The size in bytes to be copied
+    /// @param offset The offset to start the copy
+    void copy_to_buffer(AllocationMap * map, void * source, unsigned long bytes, unsigned long offset = 0)
+    {
+        db<NicBuffers>(TRC) << "BuffersHandler::copy_to_buffer(map=" << map << ",source=" << source << ", bytes=" << bytes << ", offset=" << offset << ")" << endl;
+
+        unsigned long copied = 0;
+
+        // Get the current chunk to copy data
+        int i = map->index_of_chunk_with_offset(offset);
+        unsigned long chunk_offset = map->offset_inside_chunk_with_offset(offset);
+        for (; i < map->quant_chunks(); i++) 
+        {
+            // Get the address of the chunk where the current offset applies 
+            T* dst_addr = reinterpret_cast<T*>(map->chunks()[i]) + chunk_offset;
+
+            // Calculates bytes available in the current chunk to copy
+            unsigned long size_available_in_chunk = map->chunks_sizes()[i] - chunk_offset;
+            
+            // Get the maximum data between the required to copy and the available in this buffer
+            unsigned long size_to_cp = size_available_in_chunk; 
+            if (size_to_cp > bytes) 
+            {
+                size_to_cp = bytes;
+            }
+
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_buffer::Chunk[" << i << "] - Source Address => " << source  << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_buffer::Chunk[" << i << "] - Destiny Address => " << &dst_addr  << endl;
+            db<NicBuffers>(TRC) << "BuffersHandler::copy_to_buffer::Chunk[" << i << "] - Size To Copy => " << size_to_cp << " bytes" << endl;
+            
+            // Copy the data
+            memcpy(dst_addr, source, size_to_cp);
+
+            // Increment the memory of already copied data
+            copied += size_to_cp;
+
+            // Increment the pointer of the source
+            source = static_cast<void *>(static_cast<char *>(source) + size_to_cp);
+
+            // If already copied all bytes, break
+            if (copied >= bytes) 
+            {
+                break;
+            }
+
+            // Reset the chunk offset if necessary to go to another chunk
+            chunk_offset = 0;
         }
     };
 

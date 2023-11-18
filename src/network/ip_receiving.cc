@@ -33,6 +33,49 @@ void IP::nic_callback(BufferInfo * bufferInfo)
     }
 }
 
+void IP::handle_datagram_reassembled(IP::DatagramReassembling * datagram) 
+{
+    if (datagram->destiny() != _address) 
+    {
+        if (_router->is_gateway()) 
+        {
+            db<IP>(TRC) << "IP::RoutingDatagram::DST=(" << datagram->destiny() << ")" << endl;
+
+            // Reuse the map that was used to reassemble the datagram
+            MemAllocationMap * map = reinterpret_cast<MemAllocationMap*>(datagram->map());
+
+            SendingParameters parameters = SendingParameters(datagram->destiny(), datagram->protocol(), HIGH);
+
+            // Insert the datagram in the queue to be sended
+            DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, *datagram->header()); 
+
+            // Insert into sending queue the information of this Datagram
+            _queue.insert(datagram_buffered->link());
+
+            // Releases the Thread to send the Datagram
+            _semaphore->v();
+
+            return;
+        }
+        else
+        {
+            db<IP>(TRC) << "IP::Ignoring datagram that is not for me!" << endl;
+     
+            return;
+        }
+    }
+
+    db<IP>(TRC) << "IP::Datagram Received and Reassembled=" << endl;
+
+    unsigned long data_size = datagram->header()->data_size();
+
+    char data[data_size];
+
+    nw_buffers.copy_to_mem(datagram->map(), data, data_size, false);
+
+    db<IP>(TRC) << data << endl;
+}
+
 void IP::handle_datagram(Header * datagram) 
 {
     if (datagram->verify_checksum()) 
@@ -114,14 +157,14 @@ void IP::handle_fragmentation(Header * fragment)
     datagram->receive_fragment(fragment);
 
     // Copy the fragment data into the reassembling datagram
-
+    nw_buffers.copy_to_buffer(datagram->map(), fragment->data_address(), fragment->data_size(), fragment->data_offset());
 
     db<IP>(TRC) << "IP::Reassembler::DatagramReassembling=" << *datagram << endl;
 
     // If completed, handle the datagram being received
     if (datagram->reassembling_completed()) 
     {
-        handle_datagram(datagram->header());
+        handle_datagram_reassembled(datagram);
     }
 }
 

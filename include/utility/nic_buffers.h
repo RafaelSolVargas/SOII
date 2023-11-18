@@ -273,10 +273,57 @@ public:
         return _data_copied - offset;
     }
 
+    /// @brief The chunk where the pointer are pointing after an offset
+    int index_of_chunk_with_offset(unsigned long offset) 
+    {
+        int i = 0;
+
+        // Pass in each chunk calculating where the _data_copied offset is placed 
+        for (; i < _quant_chunks; i++) 
+        {
+            unsigned long size = _chunks_sizes[i];
+            
+            // If the offset will end in the current chunk, return it
+            if (size > offset) 
+            {
+                return i;
+            }
+
+            offset -= size;
+        }
+
+        return i;
+    }
+
+    /// @brief The offset inside the chunk where the pointer are pointing after an offset
+    unsigned long offset_inside_chunk_with_offset(unsigned long offset) 
+    {
+        int i = 0;
+
+        // Pass in each chunk calculating where the _data_copied offset is placed 
+        for (; i < _quant_chunks; i++) 
+        {
+            unsigned long size = _chunks_sizes[i];
+            
+            // If the offset will end in the current chunk, return it
+            if (size > offset) 
+            {
+                return offset;
+            }
+
+            offset -= size;
+        }
+
+        return offset;
+    }
+
     /// @brief Original size of the allocation
     unsigned long original_size() { return _original_size; }
     
+    /// @brief Total size to consider in this map
     unsigned long total_size() { return _total_size; }
+
+    void total_size(unsigned long new_size) { _total_size = new_size; }
 
     /// @brief Total data already copied
     unsigned long data_copied() { return _data_copied; }

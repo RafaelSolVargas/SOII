@@ -205,6 +205,12 @@ public:
             return length();
         }
 
+        /// @brief The offset of bytes until the start of this fragment
+        unsigned int data_offset() 
+        { 
+            return offset() * FRAGMENT_MTU;
+        }
+
         unsigned short flags() const { return _flags; }
         unsigned short id() const { return ntohs(_id); }
         unsigned short offset() const { return ntohs(_offset); }
@@ -253,7 +259,6 @@ public:
 
 protected:
     typedef NonCBuffer::AllocationMap AllocationMap;
-
 
     // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
     class DatagramBufferedRX 
@@ -380,6 +385,9 @@ protected:
 
                 // Update the length in the Header being reassembled
                 _header->length(data_size);
+
+                // Update the size in the allocationMap, doesn't discard the available memory, just change the property
+                _allocation_map->total_size(data_size);
             }
 
             // Mark the fragment as received, the IP is responsible for checking the status to see if it's duplicated
@@ -520,6 +528,8 @@ private:
     void handle_datagram(Header * datagram);
 
     DatagramReassembling * get_reassembling_datagram(Header * fragment);
+
+    void handle_datagram_reassembled(DatagramReassembling * datagram); 
 
     static void class_nic_callback(BufferInfo * bufferInfo);
     void nic_callback(BufferInfo * bufferInfo);

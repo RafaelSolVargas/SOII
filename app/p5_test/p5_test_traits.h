@@ -120,7 +120,7 @@ template<> struct Traits<System>: public Traits<Build>
 
 template<> struct Traits<NicBuffers>: public Traits<Build>
 {
-    static const bool debugged = false;
+    static const bool debugged = true;
 
     static const bool error   = true;
     static const bool warning = true;
@@ -130,6 +130,16 @@ template<> struct Traits<NicBuffers>: public Traits<Build>
 
 
 template<> struct Traits<WaitingResolutionItem>: public Traits<Debug>
+{
+    static const bool debugged = false;
+
+    static const bool error   = false;
+    static const bool warning = false;
+    static const bool info    = false;
+    static const bool trace   = false;
+};
+
+template<> struct Traits<Router>: public Traits<Debug>
 {
     static const bool debugged = false;
 

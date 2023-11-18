@@ -32,7 +32,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
 
     AllocationMap * map = reinterpret_cast<AllocationMap *>(buffer_ptr);
 
-    unsigned long total_size = map->original_size();
+    unsigned long total_size = map->total_size();
 
     unsigned int id = get_next_id();
 
@@ -57,7 +57,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
         Header * header = reinterpret_cast<Header *>(buffer->data());
 
         // Use the interface to copy the chunks of the allocation map to the Buffer
-        nw_buffers.copy_nc(buffer_ptr, header->data_address(), total_size);
+        nw_buffers.copy_to_mem(buffer_ptr, header->data_address(), total_size);
 
         _nic->send(buffer);
 
@@ -95,7 +95,7 @@ void IP::send_data(const Address & dst, const Protocol & prot, unsigned int id, 
 
 void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & prot, AllocationMap * map, bool reuse_header, Header header) 
 {
-    unsigned long total_size = map->original_size();
+    unsigned long total_size = map->total_size();
 
     db<IP>(TRC) << "IP::Fragmentation => Starting Fragmentation of Datagram with " << total_size << " bytes of data. Reuse => " << reuse_header << endl;
 
@@ -135,7 +135,7 @@ void IP::send_buffered_with_fragmentation(const Address & dst, const Protocol & 
 
         db<IP>(TRC) << "IP::Fragment[" << offset << "]" << " => " << *header << endl;
 
-        nw_buffers.copy_nc(map, header->data_address(), fragment_size);
+        nw_buffers.copy_to_mem(map, header->data_address(), fragment_size);
 
         _nic->send(buffer);
 
