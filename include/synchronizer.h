@@ -58,6 +58,8 @@ public:
 
     void p();
     void v(bool disablePreemptive = false);
+    void cpu_lock() { begin_atomic(); }
+    void cpu_unlock() { end_atomic(); }
 
 private:
     volatile long _value;

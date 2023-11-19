@@ -35,14 +35,12 @@ int SiFiveU_NIC::callbacks_handler()
 
     while (!_deleted) 
     {
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Waiting for next package" << endl;
+        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Waiting for next package" << endl;
 
         _semaphore->p();
 
         if (_deleted) break;
 
-        
-        
         // Index of the next buffer that was received, will not use the _rx_cur because many packages can arrive before the code reaches here
         // But, if some package was dropped due to 1) callbacks in empty or 2) the sender is the receiver, the _rx_callback_cur will not be updated
         // must check again here in the callback handler each packages until reach to the one that is ours
@@ -77,8 +75,6 @@ int SiFiveU_NIC::callbacks_handler()
 
         Frame* frame = reinterpret_cast<Frame*>(buffer->address());
         
-        db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Preparing package in RX_DESC[" << i << "]"<< endl;
-
         // Build the buffer info to pass to higher layers
         unsigned long frame_size = descriptor->frame_size();
         BufferInfo * buffer_info = new (SYSTEM) BufferInfo(buffer, i, frame_size); 
@@ -99,7 +95,7 @@ int SiFiveU_NIC::callbacks_handler()
 
             if (wrapper->protocol() == frame->prot()) 
             {
-                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Sending RX_DESC[" << i << "]" << endl;
+                db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::ExecutingCallback With Frame RX_DESC[" << i << "]" << endl;
 
                 wrapper->_callback(buffer_info);
 

@@ -11,6 +11,11 @@ void IP::class_nic_callback(BufferInfo * bufferInfo)
 
 void IP::nic_callback(BufferInfo * bufferInfo) 
 {
+    if (_dataCallbacks.empty()) 
+    {
+        return;
+    }
+
     Header * fragment = reinterpret_cast<Header *>(bufferInfo->data());
 
     db<IP>(TRC) << "IP::receive(frag=" << *fragment << ")" << endl;
@@ -47,7 +52,7 @@ void IP::handle_datagram_reassembled(IP::DatagramReassembling * datagram)
             SendingParameters parameters = SendingParameters(datagram->destiny(), datagram->protocol(), HIGH);
 
             // Insert the datagram in the queue to be sended
-            DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, *datagram->header()); 
+            DatagramSending* datagram_buffered = new (SYSTEM) DatagramSending(parameters, map, *datagram->header()); 
 
             // Insert into sending queue the information of this Datagram
             _queue.insert(datagram_buffered->link());
@@ -67,13 +72,9 @@ void IP::handle_datagram_reassembled(IP::DatagramReassembling * datagram)
 
     db<IP>(TRC) << "IP::Datagram Received and Reassembled=" << endl;
 
-    unsigned long data_size = datagram->header()->data_size();
+    execute_callbacks(datagram->header(), datagram->map());
 
-    char data[data_size];
-
-    nw_buffers.copy_to_mem(datagram->map(), data, data_size, false);
-
-    db<IP>(TRC) << data << endl;
+    IPEventsHandler::process_event(IPEventsHandler::HOST_UNREACHABLE);
 }
 
 void IP::handle_datagram(Header * datagram) 
@@ -106,7 +107,7 @@ void IP::handle_datagram(Header * datagram)
             Header header_to_reuse = Header(datagram->source(), datagram->destiny(), datagram->protocol(), datagram->data_size(), datagram->id(), DATAGRAM, 0);
 
             // Insert the datagram in the queue to be sended
-            DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, header_to_reuse); 
+            DatagramSending* datagram_buffered = new (SYSTEM) DatagramSending(parameters, map, header_to_reuse); 
 
             // Insert into sending queue the information of this Datagram
             _queue.insert(datagram_buffered->link());
@@ -124,20 +125,41 @@ void IP::handle_datagram(Header * datagram)
         }
     }
 
-    unsigned int payload = datagram->data_size();
+    // Move the data from the NIC Buffer to the AllocationMap
+    unsigned int data_size = datagram->data_size();
 
-    char receivedData[payload];
+    void * buffered_data = nw_buffers.alloc_nc(const_cast<char*>(reinterpret_cast<const char*>(datagram->data_address())), data_size);
 
-    memcpy(receivedData, datagram->data_address(), payload);
+    MemAllocationMap * map = reinterpret_cast<MemAllocationMap*>(buffered_data);
 
-    db<IP>(TRC) << "IP::Datagram Data Received= " << *datagram << endl;
+    // Pass the received datagrams for upper layers
+    execute_callbacks(datagram, map);
 
-    for (unsigned int index = 0; index < payload; index++) 
+    // Increase counter, execute this as last to not finish threads before the callback is executed
+    _stats.rx_datagrams++;
+}
+
+void IP::execute_callbacks(Header * datagram, MemAllocationMap * map) 
+{
+    if (_dataCallbacks.empty()) 
     {
-        db<IP>(TRC) << receivedData[index];
+        return;
     }
 
-    _stats.rx_datagrams++;
+    // Call all callbacks that was registered in the NIC
+    for (IpDataCbWrapper::Element *el = _dataCallbacks.head(); el; el = el->next()) 
+    {
+        IpDataCbWrapper* wrapper = el->object();
+
+        if (wrapper->protocol() == datagram->protocol()) 
+        {
+            db<SiFiveU_NIC>(INF) << "IP::CallbackExecutor::Sending Datagram[" << datagram->id() << "]" << endl;
+
+            wrapper->_callback(datagram, map);
+
+            db<SiFiveU_NIC>(INF) << "IP::CallbackExecutor::Finished Datagram [" << datagram->id() << "]" << endl;
+        }
+    }
 }
 
 void IP::handle_fragmentation(Header * fragment) 
@@ -159,15 +181,14 @@ void IP::handle_fragmentation(Header * fragment)
     // Copy the fragment data into the reassembling datagram
     nw_buffers.copy_to_buffer(datagram->map(), fragment->data_address(), fragment->data_size(), fragment->data_offset());
 
-    db<IP>(TRC) << "IP::Reassembler::DatagramReassembling=" << *datagram << endl;
-
     // If completed, handle the datagram being received
     if (datagram->reassembling_completed()) 
     {
+        db<IP>(TRC) << "IP::Reassembler::DatagramReassembled=" << *datagram << endl;
+
         handle_datagram_reassembled(datagram);
     }
 }
-
 
 IP::DatagramReassembling * IP::get_reassembling_datagram(Header * fragment) 
 {

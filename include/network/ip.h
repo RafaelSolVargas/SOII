@@ -9,12 +9,17 @@
 #include <utility/list.h>
 #include <system.h>
 #include <utility/queue.h>
+#include <utility/callbacks_wrapper.h>
+#include <network/ip_network.h>
 
 __BEGIN_SYS
 
+class ICMP;
 
 class IPDefinitions
 {
+    friend class ICMP;
+
 protected:
     /// @brief Buffer received by the NIC
     typedef Ethernet::BufferInfo BufferInfo;
@@ -51,7 +56,6 @@ public:
         NORMAL  = Priority::NORMAL,
         LOW     = Priority::LOW,
     };
-
 
     // IP Datagram Parameters
     struct SendingParameters 
@@ -261,36 +265,36 @@ protected:
     typedef NonCBuffer::AllocationMap AllocationMap;
 
     // Objects stored in the SendingQueue, they are ordered by the Priority attribute and the Priority can be defined by the User
-    class DatagramBufferedRX 
+    class DatagramSending 
     {
     public:
-        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map) 
+        DatagramSending(const SendingParameters & config, MemAllocationMap * map) 
             : _link(this, config.priority), _configuration(config), _allocation_map(map) { }
 
-        DatagramBufferedRX(const SendingParameters & config, MemAllocationMap * map, const Header & header) 
+        DatagramSending(const SendingParameters & config, MemAllocationMap * map, const Header & header) 
             : _link(this, config.priority), _configuration(config), _allocation_map(map), _header(header), _has_header(true) { }
 
-        typedef typename Queue<DatagramBufferedRX>::Element Element;
+        typedef typename Queue<DatagramSending>::Element Element;
     
         typedef Priority Criterion;
 
-        typedef Ordered_Queue<DatagramBufferedRX, Priority, Scheduler<DatagramBufferedRX>::Element> Queue;
+        typedef Ordered_Queue<DatagramSending, Priority, Scheduler<DatagramSending>::Element> SendingQueue;
         
-        Queue::Element * link() { return &_link; }
+        SendingQueue::Element * link() { return &_link; }
         SendingParameters config() const { return _configuration; }
         MemAllocationMap * map() { return _allocation_map; }
         Header header() { return _header; }
         bool has_header() { return _has_header; }
 
     private:
-        Queue::Element _link;
+        SendingQueue::Element _link;
         SendingParameters _configuration;
         MemAllocationMap * _allocation_map;
         Header _header;
         bool _has_header;
     };
 
-    typedef DatagramBufferedRX::Queue Queue;
+    typedef DatagramSending::SendingQueue SendingQueue;
 
     // Class to hold datagrams being defragmented
     class DatagramReassembling 
@@ -450,27 +454,38 @@ protected:
     };
 
     typedef DatagramReassembling::ReassemblingList ReassemblingList;
+
+    // Define the interface of the callbacks that can be registered in the callbacksList
+    typedef void (*IpDataCbFunction)(Header *, MemAllocationMap *);
+
+    // Define the callback for data
+    typedef CallbacksWrapper<IpDataCbFunction, Protocol> IpDataCbWrapper;
+
+    IpDataCbWrapper::List _dataCallbacks;
 };
 
 class Router;
 
 class IP : public IPDefinitions
 {
+    friend class ICMP;
+
 private:
     typedef IPDefinitions::MAC_Address MAC_Address;
     typedef IPDefinitions::BufferInfo BufferInfo;
-    typedef IPDefinitions::AllocationMap AllocationMap;
     typedef IPDefinitions::Statistics Statistics;
     typedef IPDefinitions::DatagramReassembling DatagramReassembling;
 
 public:
     typedef IPDefinitions::Address Address;
     typedef IPDefinitions::Protocol Protocol;
+    typedef IPDefinitions::AllocationMap AllocationMap;
     typedef IPDefinitions::FragmentFlags FragmentFlags;
 
     static const unsigned int FRAGMENT_MTU = Header::FRAGMENT_MTU;
     
 public:
+    
     static IP* init(NIC<Ethernet> * nic);
     ~IP();
 
@@ -494,6 +509,19 @@ public:
     Address address() { return _address; }
 
     const Statistics & statistics() { return _stats; }
+
+    static unsigned short generic_checksum(const void * data, unsigned int size);
+
+    /// @brief Attach an Callback function to be called when a Datagram is received
+    /// @param callback The callback function, it must receive an BufferInfo, to retrieve the data
+    void attach_callback(void (*callback)(Header *, MemAllocationMap *), const Protocol & prot) 
+    {
+        db<Header>(TRC) << "IP::AttachingCallback(prot=" << prot << ")" << endl; 
+
+        IpDataCbWrapper* callbackWrapper = new (SYSTEM) IpDataCbWrapper(callback, prot);
+
+        _dataCallbacks.insert(callbackWrapper->link());
+    }
 
 protected:
     IP(NIC<Ethernet> * nic);
@@ -527,6 +555,8 @@ private:
 
     void handle_datagram(Header * datagram);
 
+    void execute_callbacks(Header * datagram, MemAllocationMap * map);
+
     DatagramReassembling * get_reassembling_datagram(Header * fragment);
 
     void handle_datagram_reassembled(DatagramReassembling * datagram); 
@@ -556,8 +586,8 @@ private:
 
     BuffersHandler<char> nw_buffers;
 
-    /// @brief Queue of DatagramBufferedRX objects to be sended to NIC
-    Queue _queue;
+    /// @brief SendingQueue of DatagramSending objects to be sended to NIC
+    SendingQueue _queue;
 
     /// @brief Thread to call all the callbacks with the Datagrams that was buffered
     Thread * _sending_queue_thread;

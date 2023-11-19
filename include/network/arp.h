@@ -22,7 +22,7 @@ protected:
     // ARP Protocol for NIC
     static const unsigned int PROTOCOL = Ethernet::PROTO_ARP;
 
-    static const unsigned int ARP_TIMEOUT = 15;
+    static const unsigned int ARP_TIMEOUT = 5;
     static const unsigned int ARP_TRIES = 4;
 
     class WaitingResolutionItem 

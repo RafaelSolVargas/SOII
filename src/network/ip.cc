@@ -69,7 +69,7 @@ void IP::send_buffered_data(SendingParameters parameters, void * buffer_ptr)
         // Create this virtual header to pass the information of the ID to be used in fragmentation
         Header header = Header(_address, parameters.destiny, parameters.protocol, 0, id, FragmentFlags::MID_FRAGMENT, 0);
 
-        DatagramBufferedRX* datagram_buffered = new (SYSTEM) DatagramBufferedRX(parameters, map, header); 
+        DatagramSending* datagram_buffered = new (SYSTEM) DatagramSending(parameters, map, header); 
 
         // Insert into sending queue the information of this Datagram
         _queue.insert(datagram_buffered->link());
@@ -180,7 +180,7 @@ int IP::sending_queue_function()
 
         if (_deleted) break;
 
-        DatagramBufferedRX * data_info = _queue.remove()->object();
+        DatagramSending * data_info = _queue.remove()->object();
 
         SendingParameters config = data_info->config();
 
@@ -204,5 +204,29 @@ unsigned int IP::get_next_id()
 
     return _ip->_stats.next_id++;
 }
+
+unsigned short IP::generic_checksum(const void * data, unsigned int size)
+{
+    const unsigned char * ptr = reinterpret_cast<const unsigned char *>(data);
+    unsigned long sum = 0;
+
+    for(unsigned int i = 0; i < size; i += 2) 
+    {
+        sum += (ptr[i] << 8) | ptr[i+1];
+    }
+
+    if(size & 1) 
+    {
+        sum += ptr[size - 1];
+    }
+
+    while(sum >> 16) 
+    {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+
+    return ~sum;
+}
+
 
 __END_SYS

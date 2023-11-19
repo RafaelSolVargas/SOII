@@ -183,7 +183,7 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
                         << ") => " << endl;
 
     // Get the permission to modify the RX Buffers
-    _rx_buffers_lock->p();
+    _rx_buffers_lock->cpu_lock();
 
     for (bool locked = false; !locked;)
     {
@@ -196,7 +196,7 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 
     unsigned i = _rx_cur;
 
-    _rx_buffers_lock->v();
+    _rx_buffers_lock->cpu_unlock();
 
     Buffer * buffer = _rx_buffers[i];
     Rx_Desc * descriptor = &_rx_ring[i];
@@ -227,7 +227,7 @@ int SiFiveU_NIC::receive(Address * src, Protocol * prot, void * data, unsigned i
 void SiFiveU_NIC::receive() 
 {
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Getting Lock " << endl;
-    _rx_buffers_lock->p();
+    _rx_buffers_lock->cpu_lock();
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Lock acquired " << endl;
 
     // Lock the buffer and only unlock in the free(Buffer *)
@@ -239,7 +239,7 @@ void SiFiveU_NIC::receive()
 
         ++_rx_cur %= RX_BUFS;
 
-        _rx_buffers_lock->v();
+        _rx_buffers_lock->cpu_unlock();
 
         Rx_Desc * descriptor = &_rx_ring[i];
         Buffer * buffer = _rx_buffers[i];
@@ -282,6 +282,8 @@ void SiFiveU_NIC::receive()
         return;
     }
 
+    _rx_buffers_lock->cpu_unlock();
+
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::Receive => Releasing without doing nothing " << endl;
 }
 
@@ -298,7 +300,7 @@ bool SiFiveU_NIC::free(BufferInfo * buffer_info)
     // Libera o lock do buffer Rx
     buffer->unlock();
 
-    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << index << "] released => " << descriptor << " => " << endl;
+    db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::RX_DESC[" << index << "] released" << endl;
 
     return true;  
 }

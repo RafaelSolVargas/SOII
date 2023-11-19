@@ -6,6 +6,9 @@
 #include <network/ip.h>
 #include <system.h>
 #include <time.h>
+#include <network/ip_network.h>
+#include <network/icmp.h>
+#include <network/tcp.h>
 
 using namespace EPOS;
 
@@ -87,6 +90,8 @@ void ip_test_datagram() {
 void ip_test_fragmentation() {
     SiFiveU_NIC * nic = SiFiveU_NIC::init();
     IP * ip = IP::init(nic);
+    IPEventsHandler::init(ip);
+    TCP::init(ip);
 
     unsigned int FRAG_MTU = ip->fragment_mtu();
 
@@ -152,7 +157,7 @@ void ip_test_fragmentation() {
 
         cout << "Waiting for packages, started with "  << initial_packages << " packages already received" << endl;
 
-        while (ip->statistics().rx_datagrams < 1 + initial_packages) {
+        while (ip->statistics().tx_datagrams < 1 + initial_packages) {
             Delay(100000);
         }
     }
