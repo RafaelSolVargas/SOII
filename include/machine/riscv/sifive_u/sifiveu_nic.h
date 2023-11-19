@@ -12,6 +12,7 @@
 #include <machine/ic.h>
 #include <synchronizer.h>
 #include <process.h>
+#include <utility/callbacks_wrapper.h>
 
 __BEGIN_SYS
 
@@ -267,37 +268,14 @@ private:
     static const unsigned int TX_DESC_BUFFER_SIZE = TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U); 
     static const unsigned int DESC_BUFFER_SIZE = RX_DESC_BUFFER_SIZE + TX_DESC_BUFFER_SIZE;
 
-    class CallbacksWrapper
-    {
-    public:
-        typedef Simple_List<CallbacksWrapper> List;
-        typedef typename List::Element Element;
+    // Define the interface of the callbacks that can be registered in the callbacksList
+    typedef void (*NICCallbackFunction)(BufferInfo *);
 
-        // Define um tipo de ponteiro de função para sua função de callback
-        typedef void (*CallbackFunction)(BufferInfo *);
-        
-        CallbacksWrapper(CallbackFunction callback, const Protocol & prot) 
-            : _link1(this), _link2(this), _callback(callback), _protocol(prot) { }
+    // Define our CallbacksWrapper
+    typedef CallbacksWrapper<NICCallbackFunction, Protocol> NICCallbacksWrapper;
 
-        void callCallback(BufferInfo *bufferInfo) { { _callback(bufferInfo); } }
-        Protocol protocol() { return _protocol; }
-
-
-        Element *link1() { return &_link1; }
-        Element *link() { return link1(); }
-        Element *lint() { return link1(); }
-        Element *link2() { return &_link2; }
-        Element *lext() { return link2(); }
-    protected:
-
-    private:
-        Element _link1;
-        Element _link2;
-        CallbackFunction _callback;
-        Protocol _protocol;
-    };
-
-    CallbacksWrapper::List _callbacks;
+    // Create an List of the CallbacksWrapper
+    NICCallbacksWrapper::List _callbacks;
 
 protected:
     SiFiveU_NIC();

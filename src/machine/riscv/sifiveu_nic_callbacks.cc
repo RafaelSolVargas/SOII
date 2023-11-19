@@ -6,7 +6,7 @@ __BEGIN_SYS
 
 void SiFiveU_NIC::attach_callback(void (*callback)(BufferInfo *), const Protocol & prot) 
 {
-    CallbacksWrapper* callbackWrapper = new (SYSTEM) CallbacksWrapper(callback, prot);
+    NICCallbacksWrapper* callbackWrapper = new (SYSTEM) NICCallbacksWrapper(callback, prot);
 
     _callbacks.insert(callbackWrapper->link());
 }
@@ -93,15 +93,15 @@ int SiFiveU_NIC::callbacks_handler()
         }
 
         // Call all callbacks that was registered in the NIC
-        for (CallbacksWrapper::Element *el = _callbacks.head(); el; el = el->next()) 
+        for (NICCallbacksWrapper::Element *el = _callbacks.head(); el; el = el->next()) 
         {
-            CallbacksWrapper* wrapper = el->object();
+            NICCallbacksWrapper* wrapper = el->object();
 
             if (wrapper->protocol() == frame->prot()) 
             {
                 db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Sending RX_DESC[" << i << "]" << endl;
 
-                wrapper->callCallback(buffer_info);
+                wrapper->_callback(buffer_info);
 
                 db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread::Callback finished RX_DESC[" << i << "]" << endl;
             }
