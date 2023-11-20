@@ -32,6 +32,17 @@ void ICMP::datagram_callback(IPHeader * ip_header, AllocationMap * map)
     {
         answer_ping(ip_header, header);
     }
+    else if (header->type() == ECHO_REPLY) 
+    {
+        for (WaitingResolutionItem::Element * item = _waiting_reply_queue.head(); item; item = item->next()) 
+        {
+            if (item->object()->id() == header->id()) 
+            {
+                // 0 is just an information to match the interface of WaitingResolutionItem
+                item->object()->resolve_data(0);
+            }
+        }
+    }
 
     delete header;
 }
@@ -51,9 +62,35 @@ void ICMP::ping(Address dst_address)
 {
     IP::SendingParameters parameters = IP::SendingParameters(dst_address, IP::ICMP, IP::HIGH);
 
-    Header * header = new (SYSTEM) Header(ICMP::ECHO, DEFAULT, 0, 0);
+    unsigned int ping_id = 0;
 
+    Header * header = new (SYSTEM) Header(ICMP::ECHO, DEFAULT, ping_id, 0);
+
+    // Create an item to wait the resolve of the ping
+    WaitingResolutionItem * item = new (SYSTEM) WaitingResolutionItem(ping_id, PING_TIMEOUT); 
+
+    _waiting_reply_queue.insert(item->link());
+
+    // Send the echo
     _ip->send(parameters, header, sizeof(Header));
+
+    // Wait for the item to be resolved or the timeout to be triggered
+    item->semaphore()->p();
+
+    _waiting_reply_queue.remove(item->link());
+
+    if (!item->was_resolved()) 
+    {
+        db<ICMP>(TRC) << "ICMP::Unable to ping =" << dst_address << endl;
+
+        delete item;
+
+        return;
+    }
+
+    db<ICMP>(TRC) << "ICMP::Ping completed with " << dst_address << endl;
+
+    delete item;
 }
 
 __END_SYS

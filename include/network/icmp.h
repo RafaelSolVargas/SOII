@@ -4,6 +4,7 @@
 #include "network/ip.h"
 #include "network/ethernet.h"
 #include <network/ip_network.h>
+#include <utility/waiting_item.h>
 
 __BEGIN_SYS
 
@@ -11,6 +12,11 @@ class ICMP
 {
     friend class IP;
     friend class IPEventsHandler;
+
+protected:
+    typedef WaitingResolutionItemTemplate<unsigned int, unsigned int> WaitingResolutionItem;
+    typedef WaitingResolutionItem::ResolutionQueue WaitingResolutionQueue;
+    static const unsigned int PING_TIMEOUT = 10;
 
 public:
     typedef IP::AllocationMap AllocationMap;
@@ -100,6 +106,8 @@ public:
 private:
     static ICMP * _instance;
     IP * _ip;
+
+    WaitingResolutionQueue _waiting_reply_queue;
 };
 
 __END_SYS

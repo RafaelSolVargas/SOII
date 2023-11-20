@@ -50,7 +50,7 @@ ARP::MAC_Address ARP::resolve(const Net_Address & searched_address)
         db<ARP>(TRC) << "ARP::SendingMessage " << i + 1 << endl;
     
         // Create and waiting item
-        WaitingResolutionItem * waitingItem = new (SYSTEM) WaitingResolutionItem(searched_address);
+        WaitingResolutionItem * waitingItem = new (SYSTEM) WaitingResolutionItem(searched_address, ARP_TIMEOUT);
 
         // Insert into queue
         _resolutionQueue.insert(waitingItem->link());
@@ -71,7 +71,7 @@ ARP::MAC_Address ARP::resolve(const Net_Address & searched_address)
             continue;
         }
 
-        MAC_Address response_address = waitingItem->response_address();
+        MAC_Address response_address = waitingItem->data();
         
         _resolutionQueue.remove(waitingItem->link());
 
@@ -134,9 +134,9 @@ void ARP::handle_reply(Message * message)
     // Looks up all items that are waiting for answers and respond, the items will be removed from the queue by the Thread that inserted them
     for (WaitingResolutionItem::Element * item = _resolutionQueue.head(); item; item = item->next()) 
     {
-        if (item->object()->searched_address() == message->src_net_addr()) 
+        if (item->object()->id() == message->src_net_addr()) 
         {
-            item->object()->resolve_address(message->src_mac_addr());
+            item->object()->resolve_data(message->src_mac_addr());
         }
     }
 }

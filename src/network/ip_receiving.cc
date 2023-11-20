@@ -74,7 +74,7 @@ void IP::handle_datagram_reassembled(IP::DatagramReassembling * datagram)
 
     execute_callbacks(datagram->header(), datagram->map());
 
-    IPEventsHandler::process_event(IPEventsHandler::HOST_UNREACHABLE);
+    _stats.rx_datagrams++;
 }
 
 void IP::handle_datagram(Header * datagram) 
