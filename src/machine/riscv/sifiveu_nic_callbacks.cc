@@ -64,7 +64,7 @@ int SiFiveU_NIC::callbacks_handler()
             {
                 db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Could not found a frame to process" << endl;
             
-                continue;
+                break;
             }
 
             db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::CallbackThread => Jumping one buffer that was dropped" << endl;
