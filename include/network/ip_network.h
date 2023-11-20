@@ -27,11 +27,9 @@ protected:
         HOST_UNREACHABLE = 0x3,
     };
 
-    static void process_event(IPEvent event);
-
     ~IPEventsHandler() { }
 
-    ICMP * icmp() { return _icmp; }
+    static ICMP * icmp() { if (_instance) return _instance->_icmp; return nullptr; }
 
 protected:
     IPEventsHandler(IP * ip);

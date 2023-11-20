@@ -1,6 +1,7 @@
 #include <network/ethernet.h>
 #include <network/ip.h>
 #include <system.h>
+#include <network/icmp.h>
 
 __BEGIN_SYS
 
@@ -236,7 +237,7 @@ void IP::remove_expired_datagrams()
             db<IP>(TRC) << "IP::Reassembler::DatagramExpired!!!!" << endl;
         
             // Tells the Events handler that an datagram has expired
-            IPEventsHandler::process_event(IPEventsHandler::REASSEMBLING_TIMEOUT);
+            IPEventsHandler::icmp()->process_event(IPEventsHandler::REASSEMBLING_TIMEOUT, datagram->header());
         
             _reassemblingList.remove(datagram->link());
 

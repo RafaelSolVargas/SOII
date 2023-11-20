@@ -6,6 +6,8 @@ ICMP * ICMP::_instance;
 
 ICMP::ICMP(IP * ip) : _ip(ip)
 {
+    db<ICMP>(TRC) << "ICMP::ICMP()" << endl;
+
     _ip->attach_callback(&class_datagram_callback, IP::ICMP);
     _instance = this;
 }
@@ -60,6 +62,8 @@ void ICMP::answer_ping(IPHeader * ipHeader, Header * pingHeader)
 
 void ICMP::ping(Address dst_address) 
 {
+    db<ICMP>(TRC) << "ICMP::Sending Ping for " << dst_address << endl;
+
     IP::SendingParameters parameters = IP::SendingParameters(dst_address, IP::ICMP, IP::HIGH);
 
     unsigned int ping_id = 0;
@@ -92,5 +96,23 @@ void ICMP::ping(Address dst_address)
 
     delete item;
 }
+
+
+void ICMP::process_event(IPEventsHandler::IPEvent event, IPHeader * ipHeader) 
+{
+    // There was an timeout when reassembling the Ip Header 
+    if (event == IPEventsHandler::REASSEMBLING_TIMEOUT) 
+    {
+        IP::SendingParameters parameters = IP::SendingParameters(ipHeader->source(), IP::ICMP, IP::NORMAL);
+
+        unsigned int ping_id = 0;
+
+        // Type == 11 and Code = 1 equals to reassembling timeout
+        Header * header = new (SYSTEM) Header(ICMP::TIME_EXCEEDED, ICMP::TIMEOUT, ping_id, 0);
+
+        _ip->send(parameters, header, sizeof(Header));
+    }
+}
+
 
 __END_SYS

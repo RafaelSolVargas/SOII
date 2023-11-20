@@ -24,9 +24,4 @@ IPEventsHandler * IPEventsHandler::init(IP * ip)
     return _instance;
 }
 
-void IPEventsHandler::process_event(IPEvent event) 
-{
-
-}
-
 __END_SYS

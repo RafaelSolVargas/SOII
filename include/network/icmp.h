@@ -28,15 +28,20 @@ public:
     enum 
     {
         ECHO_REPLY = 0,
-        ECHO = 8
+        UNREACHABLE = 3,
+        ECHO = 8,
+        TIME_EXCEEDED = 11
     };
 
     // ICMP Packet Codes
     typedef unsigned char Code;
     enum {
         DEFAULT = 0,
-        HOST_UNREACHABLE = 1
+        TIMEOUT = 1
     };
+
+    // 3 + 1 => Host Unreachable
+    // 11 + 1 => Reassembling Timeout
 
     class Header
     {
@@ -97,6 +102,8 @@ protected:
     void datagram_callback(IPHeader * header, AllocationMap * map);
 
     void answer_ping(IPHeader * ipHeader, Header * header);
+
+    void process_event(IPEventsHandler::IPEvent event, IPHeader * ipHeader);
 
 public:
     ~ICMP() { }
