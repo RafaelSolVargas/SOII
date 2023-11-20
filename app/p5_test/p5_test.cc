@@ -109,6 +109,12 @@ void ip_test_fragmentation() {
 
         Delay(4000000);
 
+        IP::Address ping_ip = IP::Address("150.162.60.1");
+
+        network->ping(ping_ip);
+
+        Delay(4000000);
+
         memset(data, '0' + 5, DATA_SIZE);
         
         memset(data + (FRAG_MTU * 0), '0' + 9, 1); // 9 no começo

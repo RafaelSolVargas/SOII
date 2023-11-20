@@ -15,6 +15,7 @@ class ICMP
 public:
     typedef IP::AllocationMap AllocationMap;
     typedef IP::Header IPHeader;
+    typedef IP::Address Address;
 
     // ICMP Packet Types
     typedef unsigned char Type;
@@ -27,26 +28,37 @@ public:
     // ICMP Packet Codes
     typedef unsigned char Code;
     enum {
+        DEFAULT = 0,
         HOST_UNREACHABLE = 1
     };
 
     class Header
     {
     public:
-        Header() {}
-        Header(const Type & type, const Code & code): _type(type), _code(code) {}
-        Header(const Type & type, const Code & code, unsigned short id, unsigned short seq):
-            _type(type), _code(code), _checksum(0), _id(htons(id)), _sequence(htons(seq)) {}
+        Header() { }
+        Header(const Type & type, const Code & code, unsigned short id, unsigned short seq): 
+            _type(type), _code(code), _checksum(0), _id(htons(id)), _sequence(htons(seq)) { }
 
         Type & type() { return _type; }
         Code & code() { return _code; }
         unsigned short checksum() { return _checksum; }
 
-        unsigned short id() { return htons(_id); }
+        unsigned short id() const { return htons(_id); }
         void id(unsigned short id) { _id = htons(id); }
 
-        unsigned short sequence() { return htons(_sequence); }
+        unsigned short sequence() const { return htons(_sequence); }
         void sequence(unsigned short seq) { _sequence = htons(seq); }
+
+        friend Debug & operator<<(Debug & db, const Header & h) {
+            db << "{type=" << h._type
+            << ",code=" << h._code
+            << ",checksum=" << h._checksum
+            << ",id=" << h.id()
+            << ",seq="  << h.sequence()
+            << "}";
+
+            return db;
+        }
 
     protected:
         Type _type;
@@ -56,18 +68,15 @@ public:
         unsigned short _sequence;
     } __attribute__((packed));
 
-    // ICMP Packet
-    static const unsigned int MTU = 56; // to make a traditional 64-byte packet
-    static const unsigned int HEADERS_SIZE = sizeof(IP::Header) + sizeof(Header);
+    // Packages ICMP has the original IPHeader and the first 64 bit of his data
+    static const unsigned int PKG_DATA_SIZE = sizeof(IPHeader) + 64; 
 
-    typedef unsigned char Data[MTU];
+    typedef unsigned char Data[PKG_DATA_SIZE];
 
     class Packet: public Header
     {
     public:
-        Packet(){}
-        Packet(const Type & type, const Code & code): Header(type, code) {}
-        Packet(const Type & type, const Code & code, unsigned short id, unsigned short seq): Header(type, code, id, seq) {}
+        Packet(const Type & type, const Code & code, unsigned short id, unsigned short seq): Header(type, code, id, seq) { }
 
         void sum() { _checksum = 0; _checksum = htons(IP::generic_checksum(reinterpret_cast<unsigned char *>(this), sizeof(Packet))); }
         bool check() { return (IP::generic_checksum(reinterpret_cast<unsigned char *>(this), sizeof(Packet)) != 0xffff); }
@@ -78,12 +87,18 @@ public:
 
 protected:
     ICMP(IP * ip);
-    static void datagram_callback(IPHeader * header, AllocationMap * map);
+    static void class_datagram_callback(IPHeader * header, AllocationMap * map);
+    void datagram_callback(IPHeader * header, AllocationMap * map);
+
+    void answer_ping(IPHeader * ipHeader, Header * header);
 
 public:
     ~ICMP() { }
 
+    void ping(Address dst_address);
+
 private:
+    static ICMP * _instance;
     IP * _ip;
 };
 

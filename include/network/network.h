@@ -17,6 +17,8 @@ __BEGIN_SYS
 class Network 
 {
 public:
+    typedef IP::Address Address;
+ 
     static Network * init() 
     {
         if (!_instance) 
@@ -32,6 +34,11 @@ public:
         delete _instance;
     }
 
+    void ping(Address address) 
+    {
+        _icmp->ping(address);
+    }
+
     IP * ip() { return _ip; }
     TCP * tcp() { return _tcp; }
     SiFiveU_NIC * nic() { return _nic; }
@@ -41,9 +48,11 @@ protected:
     {
         _nic = SiFiveU_NIC::init();
         _ip = IP::init(_nic);
+        IPEventsHandler * events = IPEventsHandler::init(_ip);
         _tcp = TCP::init(_ip);
 
-        IPEventsHandler::init(_ip);
+
+        _icmp = events->icmp();
     }
 
 private:

@@ -135,6 +135,9 @@ void IP::handle_datagram(Header * datagram)
     // Pass the received datagrams for upper layers
     execute_callbacks(datagram, map);
 
+    // Free the allocated memory
+    nw_buffers.free_nc(map);
+
     // Increase counter, execute this as last to not finish threads before the callback is executed
     _stats.rx_datagrams++;
 }
@@ -153,17 +156,13 @@ void IP::execute_callbacks(Header * datagram, MemAllocationMap * map)
 
         if (wrapper->protocol() == datagram->protocol()) 
         {
-            db<SiFiveU_NIC>(INF) << "IP::CallbackExecutor::Sending Datagram[" << datagram->id() << "]" << endl;
+            db<IP>(INF) << "IP::CallbackExecutor::Sending Datagram[" << datagram->id() << "]" << endl;
 
             wrapper->_callback(datagram, map);
 
-            db<SiFiveU_NIC>(INF) << "IP::CallbackExecutor::Finished Datagram [" << datagram->id() << "]" << endl;
+            db<IP>(INF) << "IP::CallbackExecutor::Finished Datagram [" << datagram->id() << "]" << endl;
         }
     }
-
-    nw_buffers.free_nc(map);
-
-    delete datagram;
 }
 
 void IP::handle_fragmentation(Header * fragment) 

@@ -9,11 +9,13 @@ class IP;
 
 class ICMP;
 
+class Network;
+
 class IPEventsHandler 
 {
 friend class IP;
 friend class ICMP;
-
+friend class Network;
 public:
     static IPEventsHandler * init(IP * ip);
 
@@ -28,6 +30,8 @@ protected:
     static void process_event(IPEvent event);
 
     ~IPEventsHandler() { }
+
+    ICMP * icmp() { return _icmp; }
 
 protected:
     IPEventsHandler(IP * ip);

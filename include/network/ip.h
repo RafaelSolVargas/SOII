@@ -131,6 +131,10 @@ public:
                 // Calls the function host to network short to converts the little to big
                 _length = htons((last_fragment_data + sizeof(Header)));
             } 
+            else if (flags == FragmentFlags::DATAGRAM) 
+            {
+                _length = htons((total_size + sizeof(Header)));
+            }
             else 
             {
                 _length = htons((FRAGMENT_MTU + sizeof(Header)));
