@@ -9,6 +9,7 @@
 #include <network/ip_network.h>
 #include <network/icmp.h>
 #include <network/tcp.h>
+#include <network/network.h>
 
 using namespace EPOS;
 
@@ -88,10 +89,9 @@ void ip_test_datagram() {
 
 
 void ip_test_fragmentation() {
-    SiFiveU_NIC * nic = SiFiveU_NIC::init();
-    IP * ip = IP::init(nic);
-    IPEventsHandler::init(ip);
-    TCP::init(ip);
+    Network * network = Network::init();
+
+    IP* ip = network->ip();
 
     unsigned int FRAG_MTU = ip->fragment_mtu();
 

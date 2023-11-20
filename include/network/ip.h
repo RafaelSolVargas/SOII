@@ -322,6 +322,8 @@ protected:
         }; 
 
     public:
+        static const unsigned int REASSEMBLING_TIMEOUT = 10; 
+
         typedef Simple_List<DatagramReassembling> ReassemblingList;
         typedef ReassemblingList::Element Element;
 
@@ -330,12 +332,13 @@ protected:
         DatagramReassembling(Header * header, MemAllocationMap * map) : _link(this), _header(header), _allocation_map(map), 
         _src_address(header->source()), _dst_address(header->destiny()), _prot(header->protocol()), _id(header->id()),
         _is_completed(false), _has_last_fragment(false), _total_fragments(0), _fragments_arrived(0)
-        { }
+        {
+            _start = TSC::time_stamp();
+        }
 
         ~DatagramReassembling() 
         {
             delete _header;
-            delete _allocation_map;
         }
 
         Header * header() { return _header; }
@@ -369,6 +372,17 @@ protected:
             } 
 
             return el->object();
+        }
+
+        /// @brief Checks if the time diff between the time when the object was created and now is greater than the timeout
+        /// @return Boolean if was expired or not
+        bool is_expired() 
+        {
+            TSC::Time_Stamp diff = TSC::time_stamp() - _start;
+
+            db<IP>(TRC) << "IP::DatagramReassembling::CurrentPassedTime=" << diff << endl;
+
+            return diff > REASSEMBLING_TIMEOUT * 100000;
         }
 
         /// @brief Updates the DatagramReassembling with the informations of the fragment arriving, changes
@@ -437,6 +451,7 @@ protected:
         }
 
     private:
+        TSC::Time_Stamp _start;
         Element _link;
         Header * _header;
         MemAllocationMap * _allocation_map;
@@ -559,6 +574,8 @@ private:
 
     DatagramReassembling * get_reassembling_datagram(Header * fragment);
 
+    void remove_expired_datagrams();
+
     void handle_datagram_reassembled(DatagramReassembling * datagram); 
 
     static void class_nic_callback(BufferInfo * bufferInfo);
@@ -579,6 +596,8 @@ private:
     static IP * _ip;
     SiFiveU_NIC * _nic;
     ARP * _arp;
+
+    TSC tsc;
 
     Statistics _stats;
 

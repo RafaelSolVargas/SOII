@@ -160,6 +160,10 @@ void IP::execute_callbacks(Header * datagram, MemAllocationMap * map)
             db<SiFiveU_NIC>(INF) << "IP::CallbackExecutor::Finished Datagram [" << datagram->id() << "]" << endl;
         }
     }
+
+    nw_buffers.free_nc(map);
+
+    delete datagram;
 }
 
 void IP::handle_fragmentation(Header * fragment) 
@@ -192,6 +196,8 @@ void IP::handle_fragmentation(Header * fragment)
 
 IP::DatagramReassembling * IP::get_reassembling_datagram(Header * fragment) 
 {
+    remove_expired_datagrams();
+    
     // Check if there is already an constructed datagram reassembling
     for (DatagramReassembling::Element *el = _reassemblingList.head(); el; el = el->next()) 
     {
@@ -217,6 +223,31 @@ IP::DatagramReassembling * IP::get_reassembling_datagram(Header * fragment)
     _reassemblingList.insert(datagram->link());
 
     return datagram;
+}
+
+void IP::remove_expired_datagrams() 
+{
+    // Check if there is an expired timestamp
+    for (DatagramReassembling::Element *el = _reassemblingList.head(); el; el = el->next()) 
+    {
+        DatagramReassembling* datagram = el->object();
+
+        if (datagram->is_expired()) 
+        {
+            db<IP>(TRC) << "IP::Reassembler::DatagramExpired!!!!" << endl;
+        
+            // Tells the Events handler that an datagram has expired
+            IPEventsHandler::process_event(IPEventsHandler::REASSEMBLING_TIMEOUT);
+        
+            _reassemblingList.remove(datagram->link());
+
+            // Libera os buffers
+            nw_buffers.free_nc(datagram->map());
+
+            // Deleta o objeto
+            delete datagram;
+        }
+    }
 }
 
 __END_SYS

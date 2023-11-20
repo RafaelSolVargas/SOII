@@ -335,7 +335,6 @@ void SiFiveU_NIC::handle_interruption()
     Reg32 interruptionReg = GEM::reg_value(R_INT_STATUS);
     Reg32 transmitStatsReg = GEM::reg_value(R_TRANSMIT_STATS);
 
-
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_INT_STATUS=" << hex << interruptionReg << endl;
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_RECEIVE_STATS=" << bin << GEM::reg_value(R_RECEIVE_STATS) << endl;
     db<SiFiveU_NIC>(INF) << "SiFiveU_NIC::int_handler(): R_TRANSMIT_STATS=" << bin << GEM::reg_value(R_TRANSMIT_STATS) << endl;
